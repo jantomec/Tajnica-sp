@@ -6,6 +6,7 @@ final class PreferencesStore {
         static let selectedWorkspaceName = "selectedWorkspaceName"
         static let selectedLLMProvider = "selectedLLMProvider"
         static let selectedLLMModel = "selectedLLMModel"
+        static let selectedTimeTracker = "selectedTimeTracker"
         static let userContext = "userContext"
     }
 
@@ -49,6 +50,19 @@ final class PreferencesStore {
     var selectedLLMModel: String? {
         get { userDefaults.string(forKey: Keys.selectedLLMModel) }
         set { setOptional(newValue, forKey: Keys.selectedLLMModel) }
+    }
+
+    var selectedTimeTracker: TimeTrackerProvider {
+        get {
+            guard let raw = userDefaults.string(forKey: Keys.selectedTimeTracker),
+                  let provider = TimeTrackerProvider(rawValue: raw) else {
+                return .toggl
+            }
+            return provider
+        }
+        set {
+            userDefaults.set(newValue.rawValue, forKey: Keys.selectedTimeTracker)
+        }
     }
 
     var userContext: String {

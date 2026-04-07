@@ -20,6 +20,16 @@ struct PlannerRootView: View {
                 Label("Review", systemImage: "calendar")
             }
             .tag(PlannerAppModel.Tab.review)
+
+            #if !os(macOS)
+            NavigationStack {
+                SettingsView()
+            }
+            .tabItem {
+                Label("Settings", systemImage: "gearshape")
+            }
+            .tag(PlannerAppModel.Tab.settings)
+            #endif
         }
         .task {
             await appModel.start()

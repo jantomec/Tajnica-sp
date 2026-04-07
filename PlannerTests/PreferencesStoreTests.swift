@@ -21,4 +21,20 @@ struct PreferencesStoreTests {
 
         defaults.removePersistentDomain(forName: suiteName)
     }
+
+    @Test
+    func persistsSelectedTimeTracker() throws {
+        let suiteName = "PlannerTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defaults.removePersistentDomain(forName: suiteName)
+
+        let firstStore = PreferencesStore(userDefaults: defaults)
+        firstStore.selectedTimeTracker = .toggl
+
+        let secondStore = PreferencesStore(userDefaults: defaults)
+
+        #expect(secondStore.selectedTimeTracker == .toggl)
+
+        defaults.removePersistentDomain(forName: suiteName)
+    }
 }

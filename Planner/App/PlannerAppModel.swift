@@ -7,6 +7,13 @@ final class PlannerAppModel: ObservableObject {
     enum Tab: Hashable {
         case capture
         case review
+        case settings
+    }
+
+    enum SettingsTab: Hashable {
+        case aiProvider
+        case timeTracker
+        case aboutMe
     }
 
     /// Small feedback value shown inline next to a button.
@@ -18,6 +25,7 @@ final class PlannerAppModel: ObservableObject {
     // MARK: - Navigation
 
     @Published var selectedTab: Tab = .capture
+    @Published var selectedSettingsTab: SettingsTab = .aiProvider
 
     // MARK: - Draft
 
@@ -36,6 +44,9 @@ final class PlannerAppModel: ObservableObject {
     }
     @Published var llmModel: String {
         didSet { preferencesStore.selectedLLMModel = llmModel.trimmed.nilIfBlank }
+    }
+    @Published var selectedTimeTracker: TimeTrackerProvider {
+        didSet { preferencesStore.selectedTimeTracker = selectedTimeTracker }
     }
 
     // MARK: - API keys (per-provider)
@@ -110,6 +121,7 @@ final class PlannerAppModel: ObservableObject {
         self.togglAPIToken = keychainStore.string(for: .togglAPIToken) ?? ""
         self.selectedProvider = preferencesStore.selectedLLMProvider
         self.llmModel = preferencesStore.selectedLLMModel ?? preferencesStore.selectedLLMProvider.defaultModel
+        self.selectedTimeTracker = preferencesStore.selectedTimeTracker
         self.userContext = preferencesStore.userContext
 
         loadPersistedDraft()
@@ -155,7 +167,7 @@ final class PlannerAppModel: ObservableObject {
     }
 
     var canSubmit: Bool {
-        !draft.candidateEntries.isEmpty && !togglAPIToken.trimmed.isEmpty && !isSubmitting
+        !draft.candidateEntries.isEmpty && selectedTimeTracker == .toggl && !togglAPIToken.trimmed.isEmpty && !isSubmitting
     }
 
     var totalErrorCount: Int {
@@ -220,13 +232,36 @@ final class PlannerAppModel: ObservableObject {
     }
 
     func updateSelectedProvider(_ provider: LLMProvider) {
-        selectedProvider = provider
-        llmModel = preferencesStore.selectedLLMModel ?? provider.defaultModel
+        guard selectedProvider != provider else { return }
+
+        // Defer changes so we don't publish during a view update cycle.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.selectedProvider = provider
+
+            // After the provider change, also update the model, still deferred.
+            // Ensure we haven't been preempted and the provider is still the intended one.
+            guard self.selectedProvider == provider else { return }
+            self.llmModel = self.preferencesStore.selectedLLMModel ?? provider.defaultModel
+        }
+    }
+
+    func updateSelectedTimeTracker(_ tracker: TimeTrackerProvider) {
+        guard tracker.isAvailable else { return }
+        // Defer the change to avoid publishing within a view update cycle.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.selectedTimeTracker = tracker
+        }
     }
 
     func updateLLMModel(_ value: String) {
         let resolved = value.trimmed.nilIfBlank ?? selectedProvider.defaultModel
-        llmModel = resolved
+        // Defer the change to avoid publishing within a view update cycle.
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.llmModel = resolved
+        }
     }
 
     // MARK: - Draft management
@@ -503,8 +538,13 @@ final class PlannerAppModel: ObservableObject {
         reviewErrorMessage = nil
         reviewStatusMessage = nil
 
+        guard selectedTimeTracker == .toggl else {
+            reviewErrorMessage = "\(selectedTimeTracker.displayName) support will be added in a future version."
+            return
+        }
+
         guard !togglAPIToken.trimmed.isEmpty else {
-            reviewErrorMessage = "Add a Toggl API token in Settings before submitting."
+            reviewErrorMessage = "Add a \(selectedTimeTracker.credentialLabel) in Settings before submitting."
             return
         }
 
@@ -523,7 +563,7 @@ final class PlannerAppModel: ObservableObject {
         persistDraft()
 
         guard !draft.candidateEntries.contains(where: \.hasErrors) else {
-            reviewErrorMessage = "Fix the validation errors before submitting to Toggl."
+            reviewErrorMessage = "Fix the validation errors before submitting to \(selectedTimeTracker.displayName)."
             return
         }
 
@@ -536,7 +576,7 @@ final class PlannerAppModel: ObservableObject {
                 workspaceID: workspace.id
             )
 
-            let message = "Submitted \(payloads.count) entries to \(workspace.name)."
+            let message = "Submitted \(payloads.count) entries to \(selectedTimeTracker.displayName) workspace \(workspace.name)."
             draft = PlannerDraft.empty(on: currentDay)
             persistDraft()
             captureStatusMessage = message

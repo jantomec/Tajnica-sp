@@ -28,14 +28,31 @@ struct StatusBanner: View {
 
     let text: String
     let style: Style
+    let actionView: AnyView?
+
+    init(
+        text: String,
+        style: Style,
+        actionView: AnyView? = nil
+    ) {
+        self.text = text
+        self.style = style
+        self.actionView = actionView
+    }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: style.iconName)
-                .foregroundStyle(style.color)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: style.iconName)
+                    .foregroundStyle(style.color)
 
-            Text(text)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if let actionView {
+                actionView
+            }
         }
         .font(.subheadline)
         .padding(12)

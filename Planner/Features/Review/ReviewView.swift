@@ -4,6 +4,30 @@ struct ReviewView: View {
     @EnvironmentObject private var appModel: PlannerAppModel
     @State private var editingEntry: CandidateTimeEntry?
 
+    private var timeTrackerSettingsActionView: AnyView {
+        #if os(macOS)
+        return AnyView(
+            SettingsLink {
+                Text("Open Time Tracker Settings")
+            }
+            .simultaneousGesture(
+                TapGesture().onEnded {
+                    appModel.selectedSettingsTab = .timeTracker
+                }
+            )
+        )
+        #else
+        return AnyView(
+            Button("Open Time Tracker Settings") {
+                appModel.selectedSettingsTab = .timeTracker
+                appModel.selectedTab = .settings
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        )
+        #endif
+    }
+
     /// Summarise the date(s) covered by candidate entries.
     private var entryDateSummary: String {
         let dates = Set(appModel.draft.candidateEntries.map {
@@ -158,7 +182,7 @@ struct ReviewView: View {
                     Label("Add Entry", systemImage: "plus")
                 }
 
-                Button("Submit to Toggl") {
+                Button("Submit to \(appModel.selectedTimeTracker.displayName)") {
                     Task {
                         await appModel.submitEntries()
                     }
@@ -176,9 +200,11 @@ struct ReviewView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             } else {
-                Text("No workspace resolved. Open Settings (\u{2318},) to configure Toggl.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                StatusBanner(
+                    text: "No workspace resolved for \(appModel.selectedTimeTracker.displayName). Configure your time tracker settings first.",
+                    style: .warning,
+                    actionView: timeTrackerSettingsActionView
+                )
             }
         }
     }

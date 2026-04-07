@@ -3,6 +3,30 @@ import SwiftUI
 struct CaptureView: View {
     @EnvironmentObject private var appModel: PlannerAppModel
 
+    private var aiSettingsActionView: AnyView {
+        #if os(macOS)
+        return AnyView(
+            SettingsLink {
+                Text("Open AI Settings")
+            }
+            .simultaneousGesture(
+                TapGesture().onEnded {
+                    appModel.selectedSettingsTab = .aiProvider
+                }
+            )
+        )
+        #else
+        return AnyView(
+            Button("Open AI Settings") {
+                appModel.selectedSettingsTab = .aiProvider
+                appModel.selectedTab = .settings
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        )
+        #endif
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -18,7 +42,7 @@ struct CaptureView: View {
                     Text("What did you do today?")
                         .font(.title2.weight(.semibold))
 
-                    Text("Paste or write your day in any language. Planner turns your note into candidate Toggl entries using \(appModel.selectedProvider.displayName).")
+                    Text("Paste or write your day in any language. Planner turns your note into candidate time entries using your selected AI engine.")
                         .foregroundStyle(.secondary)
                         .font(.subheadline)
                 }
@@ -65,8 +89,9 @@ struct CaptureView: View {
 
                 if appModel.activeAPIKey.trimmed.isEmpty {
                     StatusBanner(
-                        text: "\(appModel.selectedProvider.displayName) is not configured. Open Settings (\u{2318},) to add your API key.",
-                        style: .warning
+                        text: "Your AI engine is not configured. Choose a provider and add its API key before processing notes.",
+                        style: .warning,
+                        actionView: aiSettingsActionView
                     )
                 } else if !appModel.draft.candidateEntries.isEmpty {
                     HStack(spacing: 8) {

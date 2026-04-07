@@ -2,25 +2,52 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var appModel: PlannerAppModel
+    @State private var unavailableTrackerMessage: String?
 
     var body: some View {
-        TabView {
+        #if os(macOS)
+        TabView(selection: $appModel.selectedSettingsTab) {
             llmSettingsTab
                 .tabItem {
                     Label("AI Provider", systemImage: "cpu")
                 }
+                .tag(PlannerAppModel.SettingsTab.aiProvider)
 
-            togglSettingsTab
+            timeTrackerSettingsTab
                 .tabItem {
-                    Label("Toggl", systemImage: "timer")
+                    Label("Time Tracker", systemImage: "timer")
                 }
+                .tag(PlannerAppModel.SettingsTab.timeTracker)
 
             aboutMeTab
                 .tabItem {
                     Label("About Me", systemImage: "person.crop.circle")
                 }
+                .tag(PlannerAppModel.SettingsTab.aboutMe)
         }
         .frame(width: 520, height: 460)
+        #else
+        VStack(spacing: 16) {
+            Picker("Section", selection: $appModel.selectedSettingsTab) {
+                Text("AI Provider").tag(PlannerAppModel.SettingsTab.aiProvider)
+                Text("Time Tracker").tag(PlannerAppModel.SettingsTab.timeTracker)
+                Text("About Me").tag(PlannerAppModel.SettingsTab.aboutMe)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal)
+
+            Group {
+                switch appModel.selectedSettingsTab {
+                case .aiProvider:
+                    llmSettingsTab
+                case .timeTracker:
+                    timeTrackerSettingsTab
+                case .aboutMe:
+                    aboutMeTab
+                }
+            }
+        }
+        #endif
     }
 
     // MARK: - AI Provider Tab
@@ -83,11 +110,37 @@ struct SettingsView: View {
         .padding(.vertical, 8)
     }
 
-    // MARK: - Toggl Tab
+    // MARK: - Time Tracker Tab
 
-    private var togglSettingsTab: some View {
+    private var timeTrackerSettingsTab: some View {
         Form {
-            Section("Toggl Track") {
+            Section("Time Tracker") {
+                Picker("Tracker", selection: Binding(
+                    get: { appModel.selectedTimeTracker },
+                    set: { provider in
+                        guard provider.isAvailable else {
+                            unavailableTrackerMessage = "\(provider.displayName) will be added in a future version."
+                            return
+                        }
+                        unavailableTrackerMessage = nil
+                        appModel.updateSelectedTimeTracker(provider)
+                    }
+                )) {
+                    ForEach(TimeTrackerProvider.allCases) { provider in
+                        Text(provider.displayName).tag(provider)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                if let unavailableTrackerMessage {
+                    Text(unavailableTrackerMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
+            }
+
+            if appModel.selectedTimeTracker == .toggl {
+                Section("Toggl Track") {
                 SecureField(
                     "Toggl API Token",
                     text: Binding(
@@ -122,28 +175,29 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Workspace") {
-                if appModel.availableWorkspaces.isEmpty {
-                    Text("No live workspaces loaded yet. Test your Toggl token to load workspaces.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Picker(
-                        "Selected Workspace",
-                        selection: Binding(
-                            get: { appModel.resolvedWorkspace?.id },
-                            set: { appModel.selectWorkspace(id: $0) }
-                        )
-                    ) {
-                        ForEach(appModel.availableWorkspaces) { workspace in
-                            Text(workspace.name).tag(Optional(workspace.id))
+                Section("Workspace") {
+                    if appModel.availableWorkspaces.isEmpty {
+                        Text("No live workspaces loaded yet. Test your Toggl token to load workspaces.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker(
+                            "Selected Workspace",
+                            selection: Binding(
+                                get: { appModel.resolvedWorkspace?.id },
+                                set: { appModel.selectWorkspace(id: $0) }
+                            )
+                        ) {
+                            ForEach(appModel.availableWorkspaces) { workspace in
+                                Text(workspace.name).tag(Optional(workspace.id))
+                            }
                         }
                     }
-                }
 
-                if let workspace = appModel.resolvedWorkspace {
-                    Text("Resolved: \(workspace.name)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                    if let workspace = appModel.resolvedWorkspace {
+                        Text("Resolved: \(workspace.name)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
