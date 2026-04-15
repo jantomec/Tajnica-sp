@@ -24,7 +24,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		5DD3FEE42F7E666B0063BA67 /* Planner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Planner.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5DD3FEE42F7E666B0063BA67 /* Tajnica_sp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tajnica_sp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5DD3FEF52F7E666C0063BA67 /* PlannerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlannerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5DD3FEFF2F7E666C0063BA67 /* PlannerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PlannerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -98,7 +98,7 @@
 		5DD3FEE52F7E666B0063BA67 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				5DD3FEE42F7E666B0063BA67 /* Planner.app */,
+				5DD3FEE42F7E666B0063BA67 /* Tajnica_sp.app */,
 				5DD3FEF52F7E666C0063BA67 /* PlannerTests.xctest */,
 				5DD3FEFF2F7E666C0063BA67 /* PlannerUITests.xctest */,
 			);
@@ -127,7 +127,7 @@
 			packageProductDependencies = (
 			);
 			productName = Planner;
-			productReference = 5DD3FEE42F7E666B0063BA67 /* Planner.app */;
+			productReference = 5DD3FEE42F7E666B0063BA67 /* Tajnica_sp.app */;
 			productType = "com.apple.product-type.application";
 		};
 		5DD3FEF42F7E666C0063BA67 /* PlannerTests */ = {
@@ -316,7 +316,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jantomec.planner;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = Tajnica_sp;
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -366,7 +366,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = JanTomec.Planner;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = Tajnica_sp;
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
