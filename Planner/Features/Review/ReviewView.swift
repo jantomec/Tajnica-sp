@@ -9,6 +9,14 @@ struct ReviewView: View {
     #else
     private var useCompactEditor: Bool { false }
     #endif
+    private let preferredTimelineEntryWidth: CGFloat = 220
+    private let preferredTimelineLeadingInset: CGFloat = 68
+    private let timelineCardHorizontalPadding: CGFloat = 24
+    private let reviewHorizontalPadding: CGFloat = 24
+
+    private var preferredTimelineWidth: CGFloat {
+        preferredTimelineEntryWidth + preferredTimelineLeadingInset + timelineCardHorizontalPadding
+    }
 
     private var timeTrackerSettingsActionView: AnyView {
         #if os(macOS)
@@ -48,13 +56,21 @@ struct ReviewView: View {
     var body: some View {
         GeometryReader { geometry in
             ScrollView {
-                let isWide = geometry.size.width >= 940
+                let contentWidth = min(geometry.size.width, 1100) - (reviewHorizontalPadding * 2)
+                let isWide = contentWidth >= preferredTimelineWidth * 2
+                #if os(iOS)
+                let shouldUseFullWidthTimeline = !isWide
+                    && horizontalSizeClass == .compact
+                    && geometry.size.height > geometry.size.width
+                #else
+                let shouldUseFullWidthTimeline = false
+                #endif
 
                 Group {
                     if isWide {
                         HStack(alignment: .top, spacing: 24) {
                             timelineSection
-                                .frame(width: 330)
+                                .frame(width: preferredTimelineWidth, alignment: .leading)
 
                             entriesSection
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -62,11 +78,15 @@ struct ReviewView: View {
                     } else {
                         VStack(alignment: .leading, spacing: 24) {
                             timelineSection
+                                .frame(
+                                    maxWidth: shouldUseFullWidthTimeline ? .infinity : preferredTimelineWidth,
+                                    alignment: .leading
+                                )
                             entriesSection
                         }
                     }
                 }
-                .padding(24)
+                .padding(reviewHorizontalPadding)
                 .frame(maxWidth: 1100, alignment: .leading)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -327,4 +347,3 @@ struct ReviewView: View {
         )
     }
 }
-

@@ -7,6 +7,7 @@ final class PlannerAppModel: ObservableObject {
     enum Tab: Hashable {
         case capture
         case review
+        case diary
         case settings
     }
 
@@ -30,6 +31,7 @@ final class PlannerAppModel: ObservableObject {
     // MARK: - Draft
 
     @Published private(set) var draft: PlannerDraft
+    @Published private(set) var diaryPromptHistory: [DiaryPromptRecord] = []
 
     // MARK: - Toggl data
 
@@ -92,6 +94,7 @@ final class PlannerAppModel: ObservableObject {
 
     private let preferencesStore: PreferencesStore
     private let draftStore: DraftStore
+    private let diaryStore: DiaryStore
     private let keychainStore: KeychainStoring
     private let llmRouter: LLMServiceRouter
     private let togglService: TogglServicing
@@ -102,6 +105,7 @@ final class PlannerAppModel: ObservableObject {
     init(
         preferencesStore: PreferencesStore,
         draftStore: DraftStore,
+        diaryStore: DiaryStore,
         keychainStore: KeychainStoring,
         llmRouter: LLMServiceRouter,
         togglService: TogglServicing,
@@ -110,6 +114,7 @@ final class PlannerAppModel: ObservableObject {
     ) {
         self.preferencesStore = preferencesStore
         self.draftStore = draftStore
+        self.diaryStore = diaryStore
         self.keychainStore = keychainStore
         self.llmRouter = llmRouter
         self.togglService = togglService
@@ -128,6 +133,7 @@ final class PlannerAppModel: ObservableObject {
         self.userContext = preferencesStore.userContext
 
         loadPersistedDraft()
+        loadDiaryPromptHistory()
     }
 
     static func live() -> PlannerAppModel {
@@ -139,6 +145,7 @@ final class PlannerAppModel: ObservableObject {
         return PlannerAppModel(
             preferencesStore: PreferencesStore(),
             draftStore: DraftStore(),
+            diaryStore: DiaryStore(),
             keychainStore: KeychainStore(),
             llmRouter: LLMServiceRouter(
                 geminiService: geminiService,
@@ -183,6 +190,10 @@ final class PlannerAppModel: ObservableObject {
         draft.candidateEntries.reduce(into: 0) { partialResult, entry in
             partialResult += entry.validationIssues.filter { $0.severity == .warning }.count
         }
+    }
+
+    var diaryFeedItems: [DiaryFeedItem] {
+        DiaryFeedItem.makeFeedItems(from: diaryPromptHistory)
     }
 
     // MARK: - Lifecycle
@@ -295,6 +306,8 @@ final class PlannerAppModel: ObservableObject {
             return
         }
 
+        archiveCurrentPromptIfNeeded()
+
         isProcessing = true
         defer { isProcessing = false }
 
@@ -342,6 +355,7 @@ final class PlannerAppModel: ObservableObject {
             draft.candidateEntries = validator.validate(entries: entries, submissionWorkspaceID: nil)
             persistDraft()
 
+            captureErrorMessage = nil
             captureStatusMessage = "Generated \(draft.candidateEntries.count) candidate entries via \(selectedProvider.displayName)."
             selectedTab = .review
         } catch {
@@ -640,9 +654,36 @@ final class PlannerAppModel: ObservableObject {
         draft.candidateEntries = validator.validate(entries: draft.candidateEntries, submissionWorkspaceID: nil)
     }
 
+    private func loadDiaryPromptHistory() {
+        guard let records = try? diaryStore.loadPromptHistory() else { return }
+        diaryPromptHistory = records.sorted { $0.createdAt < $1.createdAt }
+    }
+
     private func persistDraft() {
         do {
             try draftStore.save(draft)
+        } catch {
+            captureErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func archiveCurrentPromptIfNeeded() {
+        guard !draft.note.rawText.isBlank else { return }
+
+        let record = DiaryPromptRecord(
+            day: currentDay,
+            rawText: draft.note.rawText
+        )
+
+        if let latestRecord = diaryPromptHistory.last,
+           latestRecord.day == record.day,
+           latestRecord.rawText == record.rawText {
+            return
+        }
+
+        do {
+            try diaryStore.append(record)
+            diaryPromptHistory.append(record)
         } catch {
             captureErrorMessage = error.localizedDescription
         }

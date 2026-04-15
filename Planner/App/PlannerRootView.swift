@@ -21,6 +21,14 @@ struct PlannerRootView: View {
             }
             .tag(PlannerAppModel.Tab.review)
 
+            NavigationStack {
+                DiaryView()
+            }
+            .tabItem {
+                Label("Diary", systemImage: "book.closed")
+            }
+            .tag(PlannerAppModel.Tab.diary)
+
             #if !os(macOS)
             NavigationStack {
                 SettingsView()

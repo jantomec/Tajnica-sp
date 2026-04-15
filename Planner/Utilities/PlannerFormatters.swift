@@ -17,6 +17,14 @@ enum PlannerFormatters {
         return formatter.string(from: date)
     }
 
+    static func diarySeparatorDateString(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.dateStyle = .full
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
+    }
+
     static func isoLocalDateString(_ date: Date, timeZone: TimeZone) -> String {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
