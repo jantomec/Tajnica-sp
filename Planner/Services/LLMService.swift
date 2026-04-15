@@ -7,7 +7,8 @@ protocol LLMServicing {
         model: String,
         note: DailyNoteInput,
         timeZone: TimeZone,
-        userContext: String?
+        userContext: String?,
+        availableProjects: [String]
     ) async throws -> GeminiExtractionResponse
 
     func testConnection(apiKey: String, model: String) async throws -> String

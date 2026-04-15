@@ -52,6 +52,14 @@ final class PreferencesStore {
         set { setOptional(newValue, forKey: Keys.selectedLLMModel) }
     }
 
+    func llmModel(for provider: LLMProvider) -> String? {
+        userDefaults.string(forKey: "\(Keys.selectedLLMModel).\(provider.rawValue)")
+    }
+
+    func setLLMModel(_ value: String?, for provider: LLMProvider) {
+        setOptional(value, forKey: "\(Keys.selectedLLMModel).\(provider.rawValue)")
+    }
+
     var selectedTimeTracker: TimeTrackerProvider {
         get {
             guard let raw = userDefaults.string(forKey: Keys.selectedTimeTracker),

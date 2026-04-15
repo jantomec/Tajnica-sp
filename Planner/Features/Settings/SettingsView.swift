@@ -2,7 +2,14 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var appModel: PlannerAppModel
-    @State private var unavailableTrackerMessage: String?
+
+    private var splitTrackerButtons: Bool {
+        #if os(iOS)
+        return true
+        #else
+        return false
+        #endif
+    }
 
     var body: some View {
         #if os(macOS)
@@ -83,10 +90,6 @@ struct SettingsView: View {
                     )
                 )
 
-                Text("Leave blank to use default: \(appModel.selectedProvider.defaultModel)")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-
                 HStack(spacing: 8) {
                     Button("Test Connection") {
                         Task {
@@ -115,28 +118,35 @@ struct SettingsView: View {
     private var timeTrackerSettingsTab: some View {
         Form {
             Section("Time Tracker") {
-                Picker("Tracker", selection: Binding(
-                    get: { appModel.selectedTimeTracker },
-                    set: { provider in
-                        guard provider.isAvailable else {
-                            unavailableTrackerMessage = "\(provider.displayName) will be added in a future version."
-                            return
-                        }
-                        unavailableTrackerMessage = nil
-                        appModel.updateSelectedTimeTracker(provider)
-                    }
-                )) {
+                HStack(spacing: 8) {
                     ForEach(TimeTrackerProvider.allCases) { provider in
-                        Text(provider.displayName).tag(provider)
+                        Button {
+                            appModel.updateSelectedTimeTracker(provider)
+                        } label: {
+                            Text(provider.displayName)
+                                .font(.subheadline)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 6)
+                                .background(
+                                    appModel.selectedTimeTracker == provider
+                                        ? Color.accentColor.opacity(0.18)
+                                        : Color.secondary.opacity(0.08),
+                                    in: RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                )
+                                .foregroundStyle(
+                                    provider.isAvailable
+                                        ? (appModel.selectedTimeTracker == provider ? Color.accentColor : Color.primary)
+                                        : Color.secondary
+                                )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(!provider.isAvailable)
                     }
                 }
-                .pickerStyle(.segmented)
 
-                if let unavailableTrackerMessage {
-                    Text(unavailableTrackerMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.orange)
-                }
+                Text("Clockify and Harvest support is coming in a future version.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             if appModel.selectedTimeTracker == .toggl {
@@ -156,6 +166,10 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(appModel.togglAPIToken.trimmed.isEmpty)
+
+                    if splitTrackerButtons {
+                        Spacer(minLength: 8)
+                    }
 
                     Button("Refresh Workspaces") {
                         Task {

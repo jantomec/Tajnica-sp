@@ -18,6 +18,9 @@ enum PlannerServiceError: LocalizedError, Equatable {
         case let .emptyResponse(message):
             return message
         case let .api(statusCode, message):
+            if statusCode == 503 {
+                return "The service is temporarily unavailable (503). Please try again in a moment. \(message)"
+            }
             return "Request failed (\(statusCode)): \(message)"
         case let .decoding(message):
             return message

@@ -9,7 +9,8 @@ enum GeminiRequestFactory {
         selectedDate: Date,
         timeZone: TimeZone,
         note: String,
-        userContext: String? = nil
+        userContext: String? = nil,
+        availableProjects: [String] = []
     ) throws -> URLRequest {
         let isoDate = PlannerFormatters.isoLocalDateString(selectedDate, timeZone: timeZone)
         var prompt = """
@@ -22,6 +23,11 @@ enum GeminiRequestFactory {
 
         if let context = userContext?.trimmed, !context.isEmpty {
             prompt += "\n\nUser context (use this to better understand the user's work patterns):\n\(context)"
+        }
+
+        if !availableProjects.isEmpty {
+            let list = availableProjects.map { "- \($0)" }.joined(separator: "\n")
+            prompt += "\n\nAvailable Toggl projects (use the exact name in \"project_name\" when an entry clearly belongs to one; otherwise leave it null):\n\(list)"
         }
 
         let systemInstruction = """

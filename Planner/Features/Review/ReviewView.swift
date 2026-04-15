@@ -3,6 +3,12 @@ import SwiftUI
 struct ReviewView: View {
     @EnvironmentObject private var appModel: PlannerAppModel
     @State private var editingEntry: CandidateTimeEntry?
+    #if os(iOS)
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    private var useCompactEditor: Bool { horizontalSizeClass == .compact }
+    #else
+    private var useCompactEditor: Bool { false }
+    #endif
 
     private var timeTrackerSettingsActionView: AnyView {
         #if os(macOS)
@@ -66,9 +72,33 @@ struct ReviewView: View {
             }
         }
         .navigationTitle("Review")
-        .sheet(item: $editingEntry) { entry in
-            EntryEditorView(entry: entry, availableProjects: appModel.availableProjects) { updated in
-                appModel.saveEditedEntry(updated)
+        .modifier(EntryEditorPresentation(
+            editingEntry: $editingEntry,
+            useCompactEditor: useCompactEditor,
+            availableProjects: appModel.availableProjects,
+            onSave: { appModel.saveEditedEntry($0) }
+        ))
+    }
+
+    private struct EntryEditorPresentation: ViewModifier {
+        @Binding var editingEntry: CandidateTimeEntry?
+        let useCompactEditor: Bool
+        let availableProjects: [ProjectSummary]
+        let onSave: (CandidateTimeEntry) -> Void
+
+        func body(content: Content) -> some View {
+            if useCompactEditor {
+                content.sheet(item: $editingEntry) { entry in
+                    EntryEditorView(entry: entry, availableProjects: availableProjects) { updated in
+                        onSave(updated)
+                    }
+                }
+            } else {
+                content.sheet(item: $editingEntry) { entry in
+                    EntryEditorView(entry: entry, availableProjects: availableProjects) { updated in
+                        onSave(updated)
+                    }
+                }
             }
         }
     }
@@ -297,3 +327,4 @@ struct ReviewView: View {
         )
     }
 }
+

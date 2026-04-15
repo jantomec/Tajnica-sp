@@ -43,7 +43,9 @@ final class PlannerAppModel: ObservableObject {
         didSet { preferencesStore.selectedLLMProvider = selectedProvider }
     }
     @Published var llmModel: String {
-        didSet { preferencesStore.selectedLLMModel = llmModel.trimmed.nilIfBlank }
+        didSet {
+            preferencesStore.setLLMModel(llmModel.trimmed.nilIfBlank, for: selectedProvider)
+        }
     }
     @Published var selectedTimeTracker: TimeTrackerProvider {
         didSet { preferencesStore.selectedTimeTracker = selectedTimeTracker }
@@ -119,8 +121,9 @@ final class PlannerAppModel: ObservableObject {
         self.claudeAPIKey = keychainStore.string(for: .claudeAPIKey) ?? ""
         self.openAIAPIKey = keychainStore.string(for: .openAIAPIKey) ?? ""
         self.togglAPIToken = keychainStore.string(for: .togglAPIToken) ?? ""
-        self.selectedProvider = preferencesStore.selectedLLMProvider
-        self.llmModel = preferencesStore.selectedLLMModel ?? preferencesStore.selectedLLMProvider.defaultModel
+        let initialProvider = preferencesStore.selectedLLMProvider
+        self.selectedProvider = initialProvider
+        self.llmModel = preferencesStore.llmModel(for: initialProvider) ?? initialProvider.defaultModel
         self.selectedTimeTracker = preferencesStore.selectedTimeTracker
         self.userContext = preferencesStore.userContext
 
@@ -239,10 +242,9 @@ final class PlannerAppModel: ObservableObject {
             guard let self else { return }
             self.selectedProvider = provider
 
-            // After the provider change, also update the model, still deferred.
-            // Ensure we haven't been preempted and the provider is still the intended one.
+            // After the provider change, load this provider's stored model (or default).
             guard self.selectedProvider == provider else { return }
-            self.llmModel = self.preferencesStore.selectedLLMModel ?? provider.defaultModel
+            self.llmModel = self.preferencesStore.llmModel(for: provider) ?? provider.defaultModel
         }
     }
 
@@ -256,11 +258,11 @@ final class PlannerAppModel: ObservableObject {
     }
 
     func updateLLMModel(_ value: String) {
-        let resolved = value.trimmed.nilIfBlank ?? selectedProvider.defaultModel
         // Defer the change to avoid publishing within a view update cycle.
+        // Preserve the user's input verbatim; effectiveModel falls back to default when blank.
         Task { @MainActor [weak self] in
             guard let self else { return }
-            self.llmModel = resolved
+            self.llmModel = value
         }
     }
 
@@ -307,7 +309,8 @@ final class PlannerAppModel: ObservableObject {
                 model: effectiveModel,
                 note: draft.note,
                 timeZone: timeZone,
-                userContext: userContext.trimmed.nilIfBlank
+                userContext: userContext.trimmed.nilIfBlank,
+                availableProjects: availableProjects.map(\.name)
             )
 
             var entries = try GeminiEntryConverter.convert(
@@ -318,6 +321,19 @@ final class PlannerAppModel: ObservableObject {
 
             if !availableProjects.isEmpty {
                 entries = ProjectMatcher.assignProjects(from: availableProjects, to: entries)
+            }
+
+            // If the workspace has exactly one project, auto-assign it to any entries
+            // that the AI didn't already pick a project for.
+            if availableProjects.count == 1, let onlyProject = availableProjects.first {
+                entries = entries.map { entry in
+                    guard entry.projectId == nil else { return entry }
+                    var copy = entry
+                    copy.projectName = onlyProject.name
+                    copy.projectId = onlyProject.id
+                    copy.workspaceId = onlyProject.workspaceId
+                    return copy
+                }
             }
 
             draft.summary = response.summary?.trimmed.nilIfBlank

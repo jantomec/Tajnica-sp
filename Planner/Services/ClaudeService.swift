@@ -14,7 +14,8 @@ struct ClaudeService: LLMServicing {
         model: String,
         note: DailyNoteInput,
         timeZone: TimeZone,
-        userContext: String?
+        userContext: String?,
+        availableProjects: [String]
     ) async throws -> GeminiExtractionResponse {
         let isoDate = PlannerFormatters.isoLocalDateString(note.date, timeZone: timeZone)
 
@@ -28,6 +29,11 @@ struct ClaudeService: LLMServicing {
 
         if let context = userContext?.trimmed, !context.isEmpty {
             userPrompt += "\n\nUser context (use this to better understand the user's work patterns):\n\(context)"
+        }
+
+        if !availableProjects.isEmpty {
+            let list = availableProjects.map { "- \($0)" }.joined(separator: "\n")
+            userPrompt += "\n\nAvailable Toggl projects (use the exact name in \"project_name\" when an entry clearly belongs to one; otherwise leave it null):\n\(list)"
         }
 
         let systemPrompt = """
