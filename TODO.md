@@ -6,6 +6,7 @@
 - [ ] Run the **AI matrix** against every Apple Intelligence state and every external AI provider.
 - [ ] Run the **time tracker matrix** against every tracker connection set.
 - [ ] Run the **storage and export matrix** in both local-storage and iCloud-storage modes.
+- [ ] Run the **Siri / Shortcuts smoke suite** on iPhone simulator and on at least one real iPhone.
 - [ ] Repeat at least one full end-to-end pass on both **macOS** and **iOS/iPadOS** before release.
 
 ## Combination Axes That Must Be Covered
@@ -64,6 +65,21 @@
 - [ ] Keyboard focus and tab order make sense on macOS
 - [ ] Text fields and secure fields remain usable when the keyboard is shown on iPhone and iPad
 - [ ] No console-visible crashes or obvious runtime warnings during normal navigation
+
+## Siri / Shortcuts Smoke Suite
+
+- [ ] First launch registers Planner shortcuts and they appear in the Shortcuts app
+- [ ] Siri phrase opens Capture
+- [ ] Siri phrase opens Review
+- [ ] Alternate Siri phrase still opens Review
+- [ ] Siri background action can append to the current draft note
+- [ ] Siri background action can log a manual draft entry
+- [ ] Siri background action can submit a populated draft
+- [ ] Siri tracker-assignment action works for each connected provider
+- [ ] Siri reports a clear error when there are no draft entries to submit
+- [ ] Siri reports a clear error when the required tracker connection is missing
+- [ ] Siri reports a clear error when AI processing is requested without a configured AI provider
+- [ ] Automated Siri smoke tests pass on iPhone simulator
 
 ## Settings: AI Section
 

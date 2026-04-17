@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import SwiftData
 
@@ -8,6 +9,8 @@ struct PlannerApp: App {
 
     init() {
         do {
+            PlannerShortcutsProvider.updateAppShortcutParameters()
+
             let persistenceController: PlannerPersistenceController
             if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
                 persistenceController = try PlannerPersistenceController.inMemory()
