@@ -413,6 +413,124 @@ struct DiaryFeatureTests {
 
     @MainActor
     @Test
+    func intentFacadeDuplicatesDraftEntry() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+        let facade = PlannerIntentFacade(appModel: model)
+        let start = TestSupport.localDate(on: context.day, hour: 9, minute: 0)
+        let stop = TestSupport.localDate(on: context.day, hour: 10, minute: 0)
+        model.addDraftEntry(description: "Bug fixing", start: start, stop: stop)
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+        let message = try await facade.duplicateCurrentDraftEntry(id: entryID)
+
+        #expect(model.draft.candidateEntries.count == 2)
+        #expect(message.contains("Duplicated draft entry \"Bug fixing\""))
+    }
+
+    @MainActor
+    @Test
+    func intentFacadeSetsBillableAndTags() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+        let facade = PlannerIntentFacade(appModel: model)
+        let start = TestSupport.localDate(on: context.day, hour: 9, minute: 0)
+        let stop = TestSupport.localDate(on: context.day, hour: 10, minute: 0)
+        model.addDraftEntry(description: "Bug fixing", start: start, stop: stop)
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+
+        let billableMessage = try await facade.setCurrentDraftEntryBillable(id: entryID, billable: true)
+        let tagsMessage = try await facade.setCurrentDraftEntryTags(id: entryID, tags: ["client", " review ", "client"])
+
+        let updatedEntry = try #require(model.draft.candidateEntries.first)
+        #expect(updatedEntry.billable == true)
+        #expect(updatedEntry.tags == ["client", "review"])
+        #expect(billableMessage.contains("Marked \"Bug fixing\" as billable"))
+        #expect(tagsMessage.contains("#client, #review"))
+    }
+
+    @MainActor
+    @Test
+    func intentFacadeAssignsTogglProjectToDraftEntry() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(togglToken: "token")
+        let facade = PlannerIntentFacade(appModel: model, startsModelOnUse: true)
+        let start = TestSupport.localDate(on: context.day, hour: 9, minute: 0)
+        let stop = TestSupport.localDate(on: context.day, hour: 10, minute: 0)
+        model.addDraftEntry(description: "Bug fixing", start: start, stop: stop)
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+        let message = try await facade.assignTogglProject(entryID: entryID, workspaceID: 1, projectID: 101)
+
+        let updatedEntry = try #require(model.draft.candidateEntries.first)
+        #expect(updatedEntry.togglTarget?.workspaceId == 1)
+        #expect(updatedEntry.togglTarget?.projectId == 101)
+        #expect(updatedEntry.togglTarget?.projectName == "Client Work")
+        #expect(message.contains("Assigned Toggl project \"Client Work\""))
+    }
+
+    @MainActor
+    @Test
+    func intentFacadeAssignsClockifyProjectToDraftEntry() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(clockifyToken: "token")
+        let facade = PlannerIntentFacade(appModel: model, startsModelOnUse: true)
+        let start = TestSupport.localDate(on: context.day, hour: 9, minute: 0)
+        let stop = TestSupport.localDate(on: context.day, hour: 10, minute: 0)
+        model.addDraftEntry(description: "Bug fixing", start: start, stop: stop)
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+        let message = try await facade.assignClockifyProject(
+            entryID: entryID,
+            workspaceID: "workspace-1",
+            projectID: "clockify-project-1"
+        )
+
+        let updatedEntry = try #require(model.draft.candidateEntries.first)
+        #expect(updatedEntry.clockifyTarget?.workspaceId == "workspace-1")
+        #expect(updatedEntry.clockifyTarget?.projectId == "clockify-project-1")
+        #expect(updatedEntry.clockifyTarget?.projectName == "Client Work")
+        #expect(message.contains("Assigned Clockify project \"Client Work\""))
+    }
+
+    @MainActor
+    @Test
+    func intentFacadeAssignsHarvestTaskToDraftEntryAndCanClearIt() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(harvestToken: "token")
+        let facade = PlannerIntentFacade(appModel: model, startsModelOnUse: true)
+        let start = TestSupport.localDate(on: context.day, hour: 9, minute: 0)
+        let stop = TestSupport.localDate(on: context.day, hour: 10, minute: 0)
+        model.addDraftEntry(description: "Bug fixing", start: start, stop: stop)
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+        let assignMessage = try await facade.assignHarvestTask(
+            entryID: entryID,
+            accountID: 7,
+            projectID: 12,
+            taskID: 18
+        )
+        let clearMessage = try await facade.clearTrackerAssignment(entryID: entryID, provider: .harvest)
+
+        let updatedEntry = try #require(model.draft.candidateEntries.first)
+        #expect(updatedEntry.harvestTarget == nil)
+        #expect(assignMessage.contains("Assigned Harvest task \"Implementation\""))
+        #expect(clearMessage.contains("Cleared the Harvest assignment"))
+    }
+
+    @MainActor
+    @Test
     func intentFacadeRejectsSubmissionWithoutEntries() async {
         let context = TestContext()
         defer { context.cleanup() }
@@ -446,6 +564,8 @@ private struct TestContext {
 
     func makeAppModel(
         togglToken: String = "",
+        clockifyToken: String = "",
+        harvestToken: String = "",
         geminiAPIKey: String? = "demo-key",
         claudeAPIKey: String? = nil,
         openAIAPIKey: String? = nil,
@@ -466,6 +586,12 @@ private struct TestContext {
         }
         if !togglToken.isEmpty {
             keychainValues[.togglAPIToken] = togglToken
+        }
+        if !clockifyToken.isEmpty {
+            keychainValues[.clockifyAPIToken] = clockifyToken
+        }
+        if !harvestToken.isEmpty {
+            keychainValues[.harvestAccessToken] = harvestToken
         }
 
         let keychainStore = KeychainStoreStub(values: keychainValues)
@@ -596,7 +722,7 @@ private struct TogglServiceStub: TogglServicing {
     }
 
     func fetchProjects(apiToken: String, workspaceID: Int) async throws -> [ProjectSummary] {
-        []
+        [ProjectSummary(id: 101, name: "Client Work", workspaceId: workspaceID)]
     }
 
     func createTimeEntries(
@@ -640,7 +766,10 @@ private struct ClockifyServiceStub: ClockifyServicing {
 
 private struct HarvestServiceStub: HarvestServicing {
     func fetchAccounts(accessToken: String) async throws -> [HarvestAccountSummary] {
-        [HarvestAccountSummary(id: 7, name: "Harvest Account")]
+        [
+            HarvestAccountSummary(id: 7, name: "Harvest Account"),
+            HarvestAccountSummary(id: 8, name: "Internal Account")
+        ]
     }
 
     func fetchCurrentUser(accessToken: String, accountID: Int) async throws -> HarvestCurrentUserDTO {
@@ -648,13 +777,24 @@ private struct HarvestServiceStub: HarvestServicing {
     }
 
     func fetchProjectAssignments(accessToken: String, accountID: Int) async throws -> [HarvestProjectSummary] {
-        [
-            HarvestProjectSummary(
-                id: 12,
-                name: "Client Work",
-                taskAssignments: [HarvestTaskSummary(id: 18, name: "Implementation")]
-            )
-        ]
+        switch accountID {
+        case 7:
+            return [
+                HarvestProjectSummary(
+                    id: 12,
+                    name: "Client Work",
+                    taskAssignments: [HarvestTaskSummary(id: 18, name: "Implementation")]
+                )
+            ]
+        default:
+            return [
+                HarvestProjectSummary(
+                    id: 22,
+                    name: "Internal Ops",
+                    taskAssignments: [HarvestTaskSummary(id: 28, name: "Admin")]
+                )
+            ]
+        }
     }
 
     func createTimeEntries(

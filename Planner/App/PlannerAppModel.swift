@@ -771,6 +771,82 @@ final class PlannerAppModel: ObservableObject {
         validateAndPersistEntries()
     }
 
+    func setEntryBillable(id: CandidateTimeEntry.ID, billable: Bool?) {
+        synchronizeNoteDateWithToday()
+        updateDraftEntry(id: id) { entry in
+            entry.billable = billable
+        }
+    }
+
+    func setEntryTags(id: CandidateTimeEntry.ID, tags: [String]) {
+        synchronizeNoteDateWithToday()
+        updateDraftEntry(id: id) { entry in
+            entry.tags = tags.trimmedDeduplicated()
+        }
+    }
+
+    func setTogglAssignment(
+        id: CandidateTimeEntry.ID,
+        workspaceID: Int?,
+        projectID: Int?
+    ) {
+        synchronizeNoteDateWithToday()
+        updateDraftEntry(id: id) { entry in
+            entry.togglTarget = buildTogglTarget(workspaceID: workspaceID, projectID: projectID)
+        }
+    }
+
+    func setClockifyAssignment(
+        id: CandidateTimeEntry.ID,
+        workspaceID: String?,
+        projectID: String?
+    ) {
+        synchronizeNoteDateWithToday()
+        updateDraftEntry(id: id) { entry in
+            entry.clockifyTarget = buildClockifyTarget(workspaceID: workspaceID, projectID: projectID)
+        }
+    }
+
+    func setHarvestAssignment(
+        id: CandidateTimeEntry.ID,
+        accountID: Int?,
+        projectID: Int?,
+        taskID: Int?
+    ) {
+        synchronizeNoteDateWithToday()
+        updateDraftEntry(id: id) { entry in
+            entry.harvestTarget = buildHarvestTarget(accountID: accountID, projectID: projectID, taskID: taskID)
+        }
+    }
+
+    func clearTrackerAssignment(
+        id: CandidateTimeEntry.ID,
+        provider: TimeTrackerProvider
+    ) {
+        synchronizeNoteDateWithToday()
+        updateDraftEntry(id: id) { entry in
+            switch provider {
+            case .toggl:
+                entry.togglTarget = nil
+            case .clockify:
+                entry.clockifyTarget = nil
+            case .harvest:
+                entry.harvestTarget = nil
+            }
+        }
+    }
+
+    func ensureTrackerCatalogsLoaded(for provider: TimeTrackerProvider) async throws {
+        switch provider {
+        case .toggl:
+            _ = try await loadTogglCatalogs()
+        case .clockify:
+            _ = try await loadClockifyCatalogs()
+        case .harvest:
+            _ = try await loadHarvestCatalogs()
+        }
+    }
+
     // MARK: - Connection testing
 
     func testLLMConnection() async {
@@ -1485,6 +1561,119 @@ final class PlannerAppModel: ObservableObject {
     private func validateAndPersistEntries() {
         draft.candidateEntries = validate(entries: draft.candidateEntries)
         persistDraft()
+    }
+
+    private func updateDraftEntry(
+        id: CandidateTimeEntry.ID,
+        _ mutation: (inout CandidateTimeEntry) -> Void
+    ) {
+        guard let index = draft.candidateEntries.firstIndex(where: { $0.id == id }) else { return }
+
+        var entry = draft.candidateEntries[index]
+        mutation(&entry)
+        entry.source = .user
+        draft.candidateEntries[index] = entry
+        validateAndPersistEntries()
+    }
+
+    private func buildTogglTarget(
+        workspaceID: Int?,
+        projectID: Int?
+    ) -> CandidateTimeEntry.TogglTarget? {
+        let resolvedProject = projectID.flatMap { projectID in
+            togglWorkspaceCatalogs.lazy
+                .flatMap(\.projects)
+                .first(where: { $0.id == projectID })
+        }
+        let resolvedWorkspace = workspaceID.flatMap { workspaceID in
+            togglWorkspaceCatalogs.first(where: { $0.workspace.id == workspaceID })
+        } ?? resolvedProject.flatMap { project in
+            togglWorkspaceCatalogs.first(where: { $0.workspace.id == project.workspaceId })
+        }
+
+        let target = CandidateTimeEntry.TogglTarget(
+            workspaceName: resolvedWorkspace?.workspace.name,
+            workspaceId: resolvedWorkspace?.workspace.id,
+            projectName: resolvedProject?.name,
+            projectId: resolvedProject?.id
+        )
+
+        return target.hasSelection ? target : nil
+    }
+
+    private func buildClockifyTarget(
+        workspaceID: String?,
+        projectID: String?
+    ) -> CandidateTimeEntry.ClockifyTarget? {
+        let resolvedProject = projectID.flatMap { projectID in
+            clockifyWorkspaceCatalogs.lazy
+                .flatMap(\.projects)
+                .first(where: { $0.id == projectID })
+        }
+        let resolvedWorkspace = workspaceID.flatMap { workspaceID in
+            clockifyWorkspaceCatalogs.first(where: { $0.workspace.id == workspaceID })
+        } ?? resolvedProject.flatMap { project in
+            clockifyWorkspaceCatalogs.first(where: { $0.workspace.id == project.workspaceId })
+        }
+
+        let target = CandidateTimeEntry.ClockifyTarget(
+            workspaceName: resolvedWorkspace?.workspace.name,
+            workspaceId: resolvedWorkspace?.workspace.id,
+            projectName: resolvedProject?.name,
+            projectId: resolvedProject?.id
+        )
+
+        return target.hasSelection ? target : nil
+    }
+
+    private func buildHarvestTarget(
+        accountID: Int?,
+        projectID: Int?,
+        taskID: Int?
+    ) -> CandidateTimeEntry.HarvestTarget? {
+        let resolvedProject = projectID.flatMap { projectID in
+            harvestAccountCatalogs.lazy
+                .flatMap(\.projects)
+                .first(where: { $0.id == projectID })
+        }
+        let resolvedAccount = accountID.flatMap { accountID in
+            harvestAccountCatalogs.first(where: { $0.account.id == accountID })
+        } ?? resolvedProject.flatMap { project in
+            harvestAccountCatalogs.first(where: { account in
+                account.projects.contains(where: { $0.id == project.id })
+            })
+        } ?? taskID.flatMap { taskID in
+            harvestAccountCatalogs.first(where: { account in
+                account.projects.contains(where: { project in
+                    project.taskAssignments.contains(where: { $0.id == taskID })
+                })
+            })
+        }
+        let resolvedProjectFromTask = taskID.flatMap { taskID in
+            harvestAccountCatalogs.lazy
+                .flatMap(\.projects)
+                .first(where: { project in
+                    project.taskAssignments.contains(where: { $0.id == taskID })
+                })
+        }
+        let finalProject = resolvedProject ?? resolvedProjectFromTask
+        let resolvedTask = taskID.flatMap { taskID in
+            harvestAccountCatalogs.lazy
+                .flatMap(\.projects)
+                .flatMap(\.taskAssignments)
+                .first(where: { $0.id == taskID })
+        }
+
+        let target = CandidateTimeEntry.HarvestTarget(
+            accountName: resolvedAccount?.account.name,
+            accountId: resolvedAccount?.account.id,
+            projectName: finalProject?.name,
+            projectId: finalProject?.id,
+            taskName: resolvedTask?.name,
+            taskId: resolvedTask?.id
+        )
+
+        return target.hasSelection ? target : nil
     }
 
     private func navigateToCapture() {

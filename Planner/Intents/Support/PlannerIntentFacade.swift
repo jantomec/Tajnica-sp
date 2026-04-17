@@ -134,6 +134,207 @@ struct PlannerIntentFacade {
         return "Deleted draft entry \"\(title)\". \(draftOverview())"
     }
 
+    func duplicateCurrentDraftEntry(id: UUID) async throws -> String {
+        try await prepareForIntent()
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == id }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        let title = entryTitle(entry)
+        appModel.duplicateEntry(id: id)
+        return "Duplicated draft entry \"\(title)\". \(draftOverview())"
+    }
+
+    func setCurrentDraftEntryBillable(
+        id: UUID,
+        billable: Bool?
+    ) async throws -> String {
+        try await prepareForIntent()
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == id }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        appModel.setEntryBillable(id: id, billable: billable)
+
+        let state: String
+        switch billable {
+        case true:
+            state = "billable"
+        case false:
+            state = "non-billable"
+        case nil:
+            state = "unset"
+        }
+
+        return "Marked \"\(entryTitle(entry))\" as \(state). \(draftOverview())"
+    }
+
+    func setCurrentDraftEntryTags(
+        id: UUID,
+        tags: [String]
+    ) async throws -> String {
+        try await prepareForIntent()
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == id }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        let normalizedTags = tags.trimmedDeduplicated()
+        appModel.setEntryTags(id: id, tags: normalizedTags)
+
+        if normalizedTags.isEmpty {
+            return "Cleared tags for \"\(entryTitle(entry))\". \(draftOverview())"
+        }
+
+        let tagList = normalizedTags.map { "#\($0)" }.joined(separator: ", ")
+        return "Updated tags for \"\(entryTitle(entry))\" to \(tagList). \(draftOverview())"
+    }
+
+    func assignTogglWorkspace(
+        entryID: UUID,
+        workspaceID: Int
+    ) async throws -> String {
+        try await prepareForIntent()
+        try await appModel.ensureTrackerCatalogsLoaded(for: .toggl)
+
+        guard appModel.enabledTimeTrackers.contains(.toggl) else {
+            throw PlannerIntentError(message: "Toggl is not connected in Planner.")
+        }
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        guard let workspace = appModel.togglWorkspaceCatalogs.first(where: { $0.workspace.id == workspaceID }) else {
+            throw PlannerIntentError(message: "That Toggl workspace is no longer available.")
+        }
+
+        appModel.setTogglAssignment(id: entryID, workspaceID: workspaceID, projectID: nil)
+        return "Assigned Toggl workspace \"\(workspace.workspace.name)\" to \"\(entryTitle(entry))\". \(draftOverview())"
+    }
+
+    func assignTogglProject(
+        entryID: UUID,
+        workspaceID: Int,
+        projectID: Int
+    ) async throws -> String {
+        try await prepareForIntent()
+        try await appModel.ensureTrackerCatalogsLoaded(for: .toggl)
+
+        guard appModel.enabledTimeTrackers.contains(.toggl) else {
+            throw PlannerIntentError(message: "Toggl is not connected in Planner.")
+        }
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        guard let workspace = appModel.togglWorkspaceCatalogs.first(where: { $0.workspace.id == workspaceID }),
+              let project = workspace.projects.first(where: { $0.id == projectID }) else {
+            throw PlannerIntentError(message: "That Toggl project is no longer available.")
+        }
+
+        appModel.setTogglAssignment(id: entryID, workspaceID: workspaceID, projectID: projectID)
+        return "Assigned Toggl project \"\(project.name)\" in \"\(workspace.workspace.name)\" to \"\(entryTitle(entry))\". \(draftOverview())"
+    }
+
+    func assignClockifyWorkspace(
+        entryID: UUID,
+        workspaceID: String
+    ) async throws -> String {
+        try await prepareForIntent()
+        try await appModel.ensureTrackerCatalogsLoaded(for: .clockify)
+
+        guard appModel.enabledTimeTrackers.contains(.clockify) else {
+            throw PlannerIntentError(message: "Clockify is not connected in Planner.")
+        }
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        guard let workspace = appModel.clockifyWorkspaceCatalogs.first(where: { $0.workspace.id == workspaceID }) else {
+            throw PlannerIntentError(message: "That Clockify workspace is no longer available.")
+        }
+
+        appModel.setClockifyAssignment(id: entryID, workspaceID: workspaceID, projectID: nil)
+        return "Assigned Clockify workspace \"\(workspace.workspace.name)\" to \"\(entryTitle(entry))\". \(draftOverview())"
+    }
+
+    func assignClockifyProject(
+        entryID: UUID,
+        workspaceID: String,
+        projectID: String
+    ) async throws -> String {
+        try await prepareForIntent()
+        try await appModel.ensureTrackerCatalogsLoaded(for: .clockify)
+
+        guard appModel.enabledTimeTrackers.contains(.clockify) else {
+            throw PlannerIntentError(message: "Clockify is not connected in Planner.")
+        }
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        guard let workspace = appModel.clockifyWorkspaceCatalogs.first(where: { $0.workspace.id == workspaceID }),
+              let project = workspace.projects.first(where: { $0.id == projectID }) else {
+            throw PlannerIntentError(message: "That Clockify project is no longer available.")
+        }
+
+        appModel.setClockifyAssignment(id: entryID, workspaceID: workspaceID, projectID: projectID)
+        return "Assigned Clockify project \"\(project.name)\" in \"\(workspace.workspace.name)\" to \"\(entryTitle(entry))\". \(draftOverview())"
+    }
+
+    func assignHarvestTask(
+        entryID: UUID,
+        accountID: Int,
+        projectID: Int,
+        taskID: Int
+    ) async throws -> String {
+        try await prepareForIntent()
+        try await appModel.ensureTrackerCatalogsLoaded(for: .harvest)
+
+        guard appModel.enabledTimeTrackers.contains(.harvest) else {
+            throw PlannerIntentError(message: "Harvest is not connected in Planner.")
+        }
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        guard let account = appModel.harvestAccountCatalogs.first(where: { $0.account.id == accountID }),
+              let project = account.projects.first(where: { $0.id == projectID }),
+              let task = project.taskAssignments.first(where: { $0.id == taskID }) else {
+            throw PlannerIntentError(message: "That Harvest task is no longer available.")
+        }
+
+        appModel.setHarvestAssignment(
+            id: entryID,
+            accountID: accountID,
+            projectID: projectID,
+            taskID: taskID
+        )
+
+        return "Assigned Harvest task \"\(task.name)\" in project \"\(project.name)\" to \"\(entryTitle(entry))\". \(draftOverview())"
+    }
+
+    func clearTrackerAssignment(
+        entryID: UUID,
+        provider: TimeTrackerProvider
+    ) async throws -> String {
+        try await prepareForIntent()
+
+        guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
+            throw PlannerIntentError(message: "That draft entry is no longer available.")
+        }
+
+        appModel.clearTrackerAssignment(id: entryID, provider: provider)
+        return "Cleared the \(provider.displayName) assignment for \"\(entryTitle(entry))\". \(draftOverview())"
+    }
+
     func processCurrentDraft() async throws -> String {
         try await prepareForIntent()
 
@@ -231,5 +432,9 @@ struct PlannerIntentFacade {
         }
 
         return "For \(date), \(parts.joined(separator: ", "))."
+    }
+
+    private func entryTitle(_ entry: CandidateTimeEntry) -> String {
+        entry.description.isBlank ? "Untitled Entry" : entry.description
     }
 }

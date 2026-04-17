@@ -19,17 +19,17 @@ struct PlannerShortcutsProvider: AppShortcutsProvider {
         AppShortcut(
             intent: AddDraftEntryIntent(),
             phrases: [
-                "Add a time entry to \(.applicationName)",
-                "Add an entry in \(.applicationName)"
+                "Log time in \(.applicationName)",
+                "Add a time entry to \(.applicationName)"
             ],
-            shortTitle: "Add Entry",
+            shortTitle: "Log Time",
             systemImageName: "plus.circle"
         )
 
         AppShortcut(
             intent: UpdateDraftEntryIntent(),
             phrases: [
-                "Update an entry in \(.applicationName)",
+                "Update a draft entry in \(.applicationName)",
                 "Edit an entry in \(.applicationName)"
             ],
             shortTitle: "Update Entry",
@@ -37,33 +37,43 @@ struct PlannerShortcutsProvider: AppShortcutsProvider {
         )
 
         AppShortcut(
-            intent: DeleteDraftEntryIntent(),
-            phrases: [
-                "Delete an entry from \(.applicationName)",
-                "Remove an entry from \(.applicationName)"
-            ],
-            shortTitle: "Delete Entry",
-            systemImageName: "trash"
-        )
-
-        AppShortcut(
             intent: ProcessCurrentDraftIntent(),
             phrases: [
                 "Process my \(.applicationName) draft",
-                "Process \(.applicationName)"
+                "Review my \(.applicationName) draft"
             ],
             shortTitle: "Process Draft",
             systemImageName: "wand.and.stars"
         )
 
         AppShortcut(
-            intent: ShowCurrentDraftSummaryIntent(),
+            intent: AssignTogglProjectIntent(),
             phrases: [
-                "Show my \(.applicationName) draft",
-                "What's in \(.applicationName)"
+                "Set the Toggl project in \(.applicationName)",
+                "Assign a Toggl project in \(.applicationName)"
             ],
-            shortTitle: "Draft Summary",
-            systemImageName: "doc.text.magnifyingglass"
+            shortTitle: "Toggl Project",
+            systemImageName: "briefcase"
+        )
+
+        AppShortcut(
+            intent: AssignClockifyProjectIntent(),
+            phrases: [
+                "Set the Clockify project in \(.applicationName)",
+                "Assign a Clockify project in \(.applicationName)"
+            ],
+            shortTitle: "Clockify Project",
+            systemImageName: "clock.badge"
+        )
+
+        AppShortcut(
+            intent: AssignHarvestTaskIntent(),
+            phrases: [
+                "Set the Harvest task in \(.applicationName)",
+                "Assign a Harvest task in \(.applicationName)"
+            ],
+            shortTitle: "Harvest Task",
+            systemImageName: "checklist"
         )
 
         AppShortcut(
@@ -80,9 +90,9 @@ struct PlannerShortcutsProvider: AppShortcutsProvider {
             intent: OpenPlannerReviewIntent(),
             phrases: [
                 "Open Review in \(.applicationName)",
-                "Show Review in \(.applicationName)"
+                "Review entries in \(.applicationName)"
             ],
-            shortTitle: "Open Review",
+            shortTitle: "Review Entries",
             systemImageName: "calendar"
         )
 
@@ -90,7 +100,7 @@ struct PlannerShortcutsProvider: AppShortcutsProvider {
             intent: SubmitCurrentDraftIntent(),
             phrases: [
                 "Submit my \(.applicationName) entries",
-                "Submit \(.applicationName)"
+                "Send my \(.applicationName) entries"
             ],
             shortTitle: "Submit Draft",
             systemImageName: "paperplane"
