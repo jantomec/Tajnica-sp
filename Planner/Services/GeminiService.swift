@@ -23,8 +23,7 @@ struct GeminiService: GeminiServicing {
         model: String,
         note: DailyNoteInput,
         timeZone: TimeZone,
-        userContext: String?,
-        availableProjects: [String]
+        extractionContext: LLMExtractionContext
     ) async throws -> GeminiExtractionResponse {
         let request = try GeminiRequestFactory.makeExtractionRequest(
             apiKey: apiKey,
@@ -32,8 +31,7 @@ struct GeminiService: GeminiServicing {
             selectedDate: note.date,
             timeZone: timeZone,
             note: note.rawText,
-            userContext: userContext,
-            availableProjects: availableProjects
+            extractionContext: extractionContext
         )
 
         let data = try await perform(request)

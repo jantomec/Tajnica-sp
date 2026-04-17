@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import Planner
+@testable import Tajnica_sp
 
 struct LocalTimeParserTests {
     @Test

@@ -73,7 +73,6 @@ struct DayTimelineView: View {
                     Rectangle()
                         .fill(Color.secondary.opacity(minute == timeWindow.upperBound ? 0 : 0.12))
                         .frame(height: minute == timeWindow.upperBound ? 0 : 1)
-                        .padding(.top, 8)
 
                     Spacer(minLength: 0)
                 }

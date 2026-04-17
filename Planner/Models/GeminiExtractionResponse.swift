@@ -7,7 +7,13 @@ struct GeminiExtractionResponse: Codable, Equatable {
         var startLocal: String
         var stopLocal: String
         var description: String
-        var projectName: String?
+        var togglWorkspaceName: String?
+        var togglProjectName: String?
+        var clockifyWorkspaceName: String?
+        var clockifyProjectName: String?
+        var harvestAccountName: String?
+        var harvestProjectName: String?
+        var harvestTaskName: String?
         var tags: [String]
         var billable: Bool?
 
@@ -16,7 +22,13 @@ struct GeminiExtractionResponse: Codable, Equatable {
             case startLocal = "start_local"
             case stopLocal = "stop_local"
             case description
-            case projectName = "project_name"
+            case togglWorkspaceName = "toggl_workspace_name"
+            case togglProjectName = "toggl_project_name"
+            case clockifyWorkspaceName = "clockify_workspace_name"
+            case clockifyProjectName = "clockify_project_name"
+            case harvestAccountName = "harvest_account_name"
+            case harvestProjectName = "harvest_project_name"
+            case harvestTaskName = "harvest_task_name"
             case tags
             case billable
         }

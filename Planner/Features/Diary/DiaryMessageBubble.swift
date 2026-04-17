@@ -3,6 +3,7 @@ import SwiftUI
 struct DiaryMessageBubble: View {
     let record: DiaryPromptRecord
     let bubbleWidth: CGFloat
+    let onOpen: () -> Void
 
     @State private var isExpanded = false
     @State private var collapsedHeight: CGFloat = 0
@@ -48,12 +49,23 @@ struct DiaryMessageBubble: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.9))
             }
+
+            HStack(spacing: 6) {
+                Spacer(minLength: 0)
+                Image(systemName: "timeline.selection")
+                    .font(.caption)
+                Text("Open timeline")
+                    .font(.caption.weight(.medium))
+            }
+            .foregroundStyle(.white.opacity(0.85))
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
         .foregroundStyle(.white)
         .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .frame(maxWidth: .infinity, alignment: .trailing)
+        .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .onTapGesture(perform: onOpen)
         .background(alignment: .topLeading) {
             measurementView
         }

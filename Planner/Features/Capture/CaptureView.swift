@@ -42,7 +42,7 @@ struct CaptureView: View {
                     Text("What did you do today?")
                         .font(.title2.weight(.semibold))
 
-                    Text("Paste or write your day in any language. Planner turns your note into candidate time entries using your selected AI engine.")
+                    Text("Paste or write your day in any language. \(AppConfiguration.displayName) turns your note into candidate time entries using your selected AI engine.")
                         .foregroundStyle(.secondary)
                         .font(.subheadline)
                 }
@@ -87,9 +87,9 @@ struct CaptureView: View {
                     .padding(12)
                 }
 
-                if appModel.activeAPIKey.trimmed.isEmpty {
+                if !appModel.isAIConfigured {
                     StatusBanner(
-                        text: "Your AI engine is not configured. Choose a provider and add its API key before processing notes.",
+                        text: "Your AI engine is not configured. Enable Apple Intelligence or finish setting up the selected external provider before processing notes.",
                         style: .warning,
                         actionView: aiSettingsActionView
                     )
@@ -104,10 +104,14 @@ struct CaptureView: View {
                 }
 
                 HStack(spacing: 12) {
-                    Button("Clear Draft", role: .destructive) {
+                    Button(role: .destructive) {
                         appModel.clearDraft()
+                    } label: {
+                        Label("Clear Draft", systemImage: "trash")
                     }
-                    .controlSize(.regular)
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.capsule)
+                    .controlSize(.large)
 
                     Spacer()
 
@@ -116,12 +120,18 @@ struct CaptureView: View {
                             .controlSize(.small)
                     }
 
-                    Button(appModel.draft.candidateEntries.isEmpty ? "Process" : "Regenerate") {
+                    Button {
                         Task {
                             await appModel.processNote()
                         }
+                    } label: {
+                        Label(
+                            appModel.draft.candidateEntries.isEmpty ? "Process" : "Regenerate",
+                            systemImage: appModel.draft.candidateEntries.isEmpty ? "wand.and.stars" : "arrow.clockwise"
+                        )
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.glassProminent)
+                    .buttonBorderShape(.capsule)
                     .controlSize(.large)
                     .disabled(!appModel.canProcess)
                 }
@@ -131,6 +141,9 @@ struct CaptureView: View {
             .frame(maxWidth: .infinity, alignment: .center)
         }
         .navigationTitle("Capture")
+        .onAppear {
+            appModel.refreshNoteDateForPresentation()
+        }
         .confirmationDialog(
             "Replace the current review entries?",
             isPresented: $appModel.shouldConfirmRegeneration,

@@ -1,7 +1,13 @@
 import Foundation
 
 protocol TimeEntryValidating {
-    func validate(entries: [CandidateTimeEntry], submissionWorkspaceID: Int?) -> [CandidateTimeEntry]
+    func validate(
+        entries: [CandidateTimeEntry],
+        enabledTrackers: Set<TimeTrackerProvider>,
+        togglWorkspaces: [TogglWorkspaceCatalog],
+        clockifyWorkspaces: [ClockifyWorkspaceCatalog],
+        harvestAccounts: [HarvestAccountCatalog]
+    ) -> [CandidateTimeEntry]
 }
 
 struct TimeEntryValidator: TimeEntryValidating {
@@ -16,11 +22,34 @@ struct TimeEntryValidator: TimeEntryValidating {
         self.largeGapThreshold = largeGapThreshold
     }
 
-    func validate(entries: [CandidateTimeEntry], submissionWorkspaceID: Int? = nil) -> [CandidateTimeEntry] {
+    func validate(
+        entries: [CandidateTimeEntry],
+        enabledTrackers: Set<TimeTrackerProvider> = [],
+        togglWorkspaces: [TogglWorkspaceCatalog] = [],
+        clockifyWorkspaces: [ClockifyWorkspaceCatalog] = [],
+        harvestAccounts: [HarvestAccountCatalog] = []
+    ) -> [CandidateTimeEntry] {
         var normalized = entries.map { entry in
             var copy = entry
             copy.description = copy.description.trimmed
-            copy.projectName = copy.projectName?.trimmed.nilIfBlank
+            if var togglTarget = copy.togglTarget {
+                togglTarget.workspaceName = togglTarget.workspaceName?.trimmed.nilIfBlank
+                togglTarget.projectName = togglTarget.projectName?.trimmed.nilIfBlank
+                copy.togglTarget = togglTarget.hasSelection ? togglTarget : nil
+            }
+            if var clockifyTarget = copy.clockifyTarget {
+                clockifyTarget.workspaceName = clockifyTarget.workspaceName?.trimmed.nilIfBlank
+                clockifyTarget.workspaceId = clockifyTarget.workspaceId?.trimmed.nilIfBlank
+                clockifyTarget.projectName = clockifyTarget.projectName?.trimmed.nilIfBlank
+                clockifyTarget.projectId = clockifyTarget.projectId?.trimmed.nilIfBlank
+                copy.clockifyTarget = clockifyTarget.hasSelection ? clockifyTarget : nil
+            }
+            if var harvestTarget = copy.harvestTarget {
+                harvestTarget.accountName = harvestTarget.accountName?.trimmed.nilIfBlank
+                harvestTarget.projectName = harvestTarget.projectName?.trimmed.nilIfBlank
+                harvestTarget.taskName = harvestTarget.taskName?.trimmed.nilIfBlank
+                copy.harvestTarget = harvestTarget.hasSelection ? harvestTarget : nil
+            }
             copy.tags = copy.tags.trimmedDeduplicated()
             copy.validationIssues = []
             return copy
@@ -69,25 +98,95 @@ struct TimeEntryValidator: TimeEntryValidating {
                 )
             }
 
-            if entry.projectId != nil, entry.workspaceId == nil {
+            if let togglTarget = entry.togglTarget,
+               togglTarget.projectId != nil,
+               togglTarget.workspaceId == nil {
                 issues.append(
                     ValidationIssue(
                         severity: .error,
-                        field: "projectId",
-                        message: "A project assignment needs a workspace."
+                        field: "togglTarget.projectId",
+                        message: "A Toggl project assignment needs a workspace."
                     )
                 )
             }
 
-            if let submissionWorkspaceID,
-               let projectWorkspaceID = entry.workspaceId,
-               entry.projectId != nil,
-               projectWorkspaceID != submissionWorkspaceID {
+            if enabledTrackers.contains(.toggl), togglWorkspaces.isEmpty {
                 issues.append(
                     ValidationIssue(
                         severity: .error,
-                        field: "workspaceId",
-                        message: "The assigned project belongs to a different workspace."
+                        field: "togglTarget.workspaceId",
+                        message: "Toggl workspace data is unavailable. Reconnect Toggl or try again."
+                    )
+                )
+            } else if enabledTrackers.contains(.toggl),
+                      entry.togglTarget?.workspaceId == nil {
+                issues.append(
+                    ValidationIssue(
+                        severity: .error,
+                        field: "togglTarget.workspaceId",
+                        message: "Choose a Toggl workspace for this entry."
+                    )
+                )
+            }
+
+            if enabledTrackers.contains(.clockify), clockifyWorkspaces.isEmpty {
+                issues.append(
+                    ValidationIssue(
+                        severity: .error,
+                        field: "clockifyTarget.workspaceId",
+                        message: "Clockify workspace data is unavailable. Reconnect Clockify or try again."
+                    )
+                )
+            } else if enabledTrackers.contains(.clockify),
+                      entry.clockifyTarget?.workspaceId?.trimmed.nilIfBlank == nil {
+                issues.append(
+                    ValidationIssue(
+                        severity: .error,
+                        field: "clockifyTarget.workspaceId",
+                        message: "Choose a Clockify workspace for this entry."
+                    )
+                )
+            }
+
+            if enabledTrackers.contains(.harvest), harvestAccounts.isEmpty {
+                issues.append(
+                    ValidationIssue(
+                        severity: .error,
+                        field: "harvestTarget.accountId",
+                        message: "Harvest assignment data is unavailable. Reconnect Harvest or try again."
+                    )
+                )
+            } else if enabledTrackers.contains(.harvest),
+                      entry.harvestTarget?.accountId == nil {
+                issues.append(
+                    ValidationIssue(
+                        severity: .error,
+                        field: "harvestTarget.accountId",
+                        message: "Choose a Harvest account for this entry."
+                    )
+                )
+            }
+
+            if enabledTrackers.contains(.harvest),
+               !harvestAccounts.isEmpty,
+               entry.harvestTarget?.projectId == nil {
+                issues.append(
+                    ValidationIssue(
+                        severity: .error,
+                        field: "harvestTarget.projectId",
+                        message: "Choose a Harvest project for this entry."
+                    )
+                )
+            }
+
+            if enabledTrackers.contains(.harvest),
+               !harvestAccounts.isEmpty,
+               entry.harvestTarget?.taskId == nil {
+                issues.append(
+                    ValidationIssue(
+                        severity: .error,
+                        field: "harvestTarget.taskId",
+                        message: "Choose a Harvest task for this entry."
                     )
                 )
             }

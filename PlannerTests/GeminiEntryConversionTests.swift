@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import Planner
+@testable import Tajnica_sp
 
 struct GeminiEntryConversionTests {
     @Test
@@ -10,10 +10,17 @@ struct GeminiEntryConversionTests {
         let response = GeminiExtractionResponse(
             entries: [
                 .init(
+                    dateLocal: nil,
                     startLocal: "08:30",
                     stopLocal: "10:00",
                     description: "Client call",
-                    projectName: "Alpha",
+                    togglWorkspaceName: nil,
+                    togglProjectName: "Alpha",
+                    clockifyWorkspaceName: nil,
+                    clockifyProjectName: nil,
+                    harvestAccountName: nil,
+                    harvestProjectName: nil,
+                    harvestTaskName: nil,
                     tags: [" client ", "meeting", "client"],
                     billable: true
                 )
@@ -32,7 +39,7 @@ struct GeminiEntryConversionTests {
 
         #expect(entries.count == 1)
         #expect(entry.description == "Client call")
-        #expect(entry.projectName == "Alpha")
+        #expect(entry.togglTarget?.projectName == "Alpha")
         #expect(entry.tags == [" client ", "meeting", "client"])
         #expect(entry.billable == true)
 

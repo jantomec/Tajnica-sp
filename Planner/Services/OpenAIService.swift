@@ -14,54 +14,31 @@ struct OpenAIService: LLMServicing {
         model: String,
         note: DailyNoteInput,
         timeZone: TimeZone,
-        userContext: String?,
-        availableProjects: [String]
+        extractionContext: LLMExtractionContext
     ) async throws -> GeminiExtractionResponse {
-        let isoDate = PlannerFormatters.isoLocalDateString(note.date, timeZone: timeZone)
-
-        var userPrompt = """
-        Today's date is \(isoDate).
-        Local timezone: \(timeZone.identifier)
-
-        User note:
-        \(note.rawText)
-        """
-
-        if let context = userContext?.trimmed, !context.isEmpty {
-            userPrompt += "\n\nUser context (use this to better understand the user's work patterns):\n\(context)"
-        }
-
-        if !availableProjects.isEmpty {
-            let list = availableProjects.map { "- \($0)" }.joined(separator: "\n")
-            userPrompt += "\n\nAvailable Toggl projects (use the exact name in \"project_name\" when an entry clearly belongs to one; otherwise leave it null):\n\(list)"
-        }
-
-        let systemPrompt = """
-        Convert the user's note into candidate Toggl time entries.
-        Determine the correct date for each entry from the note content. \
-        If the note says "yesterday" or references a past day, use that day's date (YYYY-MM-DD). \
-        If no specific day is mentioned, default to today's date.
-        Each entry MUST include a "date_local" field in YYYY-MM-DD format.
-        Infer reasonable contiguous time blocks.
-        Do not fabricate high-confidence details that are not supported by the note.
-        Keep descriptions concise and suitable for Toggl Track.
-        If user context is provided, use it to make better inferences about working hours, typical activities, and project assignments.
-
-        You MUST respond with ONLY a valid JSON object (no markdown, no code blocks) matching this schema:
-        {
-          "entries": [{"date_local": "YYYY-MM-DD", "start_local": "HH:mm", "stop_local": "HH:mm", "description": "string", "project_name": "string or null", "tags": ["string"], "billable": true/false/null}],
-          "assumptions": ["string"],
-          "summary": "string or null"
-        }
-        """
-
         let payload: [String: Any] = [
             "model": model,
             "temperature": 0.2,
             "response_format": ["type": "json_object"],
             "messages": [
-                ["role": "system", "content": systemPrompt],
-                ["role": "user", "content": userPrompt]
+                [
+                    "role": "system",
+                    "content": """
+                    \(LLMExtractionPromptBuilder.systemInstruction)
+
+                    You MUST respond with ONLY a valid JSON object (no markdown, no code blocks) matching this schema:
+                    \(LLMExtractionPromptBuilder.jsonSchemaSummary)
+                    """
+                ],
+                [
+                    "role": "user",
+                    "content": LLMExtractionPromptBuilder.makeUserPrompt(
+                        selectedDate: note.date,
+                        timeZone: timeZone,
+                        note: note.rawText,
+                        context: extractionContext
+                    )
+                ]
             ]
         ]
 
@@ -103,7 +80,7 @@ struct OpenAIService: LLMServicing {
 
     func polishUserContext(apiKey: String, model: String, rawText: String) async throws -> String {
         let systemPrompt = """
-        You help users describe themselves and their work patterns for a time-tracking app called Planner. \
+        You help users describe themselves and their work patterns for a time-tracking app called \(AppConfiguration.displayName). \
         The app feeds this description into an LLM to better predict and structure daily time entries.
 
         Your job:

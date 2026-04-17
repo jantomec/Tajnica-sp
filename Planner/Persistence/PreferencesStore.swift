@@ -4,9 +4,17 @@ final class PreferencesStore {
     private enum Keys {
         static let selectedWorkspaceID = "selectedWorkspaceID"
         static let selectedWorkspaceName = "selectedWorkspaceName"
+        static let selectedClockifyWorkspaceID = "selectedClockifyWorkspaceID"
+        static let selectedClockifyWorkspaceName = "selectedClockifyWorkspaceName"
+        static let selectedHarvestAccountID = "selectedHarvestAccountID"
+        static let selectedHarvestAccountName = "selectedHarvestAccountName"
+        static let selectedHarvestProjectID = "selectedHarvestProjectID"
+        static let selectedHarvestProjectName = "selectedHarvestProjectName"
+        static let selectedHarvestTaskID = "selectedHarvestTaskID"
+        static let selectedHarvestTaskName = "selectedHarvestTaskName"
         static let selectedLLMProvider = "selectedLLMProvider"
         static let selectedLLMModel = "selectedLLMModel"
-        static let selectedTimeTracker = "selectedTimeTracker"
+        static let appleIntelligenceEnabled = "appleIntelligenceEnabled"
         static let userContext = "userContext"
     }
 
@@ -34,16 +42,69 @@ final class PreferencesStore {
         }
     }
 
+    var selectedClockifyWorkspaceID: String? {
+        get { userDefaults.string(forKey: Keys.selectedClockifyWorkspaceID) }
+        set { setOptional(newValue, forKey: Keys.selectedClockifyWorkspaceID) }
+    }
+
+    var selectedClockifyWorkspaceName: String? {
+        get { userDefaults.string(forKey: Keys.selectedClockifyWorkspaceName) }
+        set { setOptional(newValue, forKey: Keys.selectedClockifyWorkspaceName) }
+    }
+
+    var selectedHarvestAccountID: Int? {
+        get { userDefaults.object(forKey: Keys.selectedHarvestAccountID) as? Int }
+        set { setOptional(newValue, forKey: Keys.selectedHarvestAccountID) }
+    }
+
+    var selectedHarvestAccountName: String? {
+        get { userDefaults.string(forKey: Keys.selectedHarvestAccountName) }
+        set { setOptional(newValue, forKey: Keys.selectedHarvestAccountName) }
+    }
+
+    var selectedHarvestProjectID: Int? {
+        get { userDefaults.object(forKey: Keys.selectedHarvestProjectID) as? Int }
+        set { setOptional(newValue, forKey: Keys.selectedHarvestProjectID) }
+    }
+
+    var selectedHarvestProjectName: String? {
+        get { userDefaults.string(forKey: Keys.selectedHarvestProjectName) }
+        set { setOptional(newValue, forKey: Keys.selectedHarvestProjectName) }
+    }
+
+    var selectedHarvestTaskID: Int? {
+        get { userDefaults.object(forKey: Keys.selectedHarvestTaskID) as? Int }
+        set { setOptional(newValue, forKey: Keys.selectedHarvestTaskID) }
+    }
+
+    var selectedHarvestTaskName: String? {
+        get { userDefaults.string(forKey: Keys.selectedHarvestTaskName) }
+        set { setOptional(newValue, forKey: Keys.selectedHarvestTaskName) }
+    }
+
     var selectedLLMProvider: LLMProvider {
         get {
             guard let raw = userDefaults.string(forKey: Keys.selectedLLMProvider),
-                  let provider = LLMProvider(rawValue: raw) else {
+                  let provider = LLMProvider(rawValue: raw),
+                  provider.isSelectableExternalProvider else {
                 return .gemini
             }
             return provider
         }
         set {
             userDefaults.set(newValue.rawValue, forKey: Keys.selectedLLMProvider)
+        }
+    }
+
+    var isAppleIntelligenceEnabled: Bool {
+        get {
+            if userDefaults.object(forKey: Keys.appleIntelligenceEnabled) == nil {
+                return true
+            }
+            return userDefaults.bool(forKey: Keys.appleIntelligenceEnabled)
+        }
+        set {
+            userDefaults.set(newValue, forKey: Keys.appleIntelligenceEnabled)
         }
     }
 
@@ -60,19 +121,6 @@ final class PreferencesStore {
         setOptional(value, forKey: "\(Keys.selectedLLMModel).\(provider.rawValue)")
     }
 
-    var selectedTimeTracker: TimeTrackerProvider {
-        get {
-            guard let raw = userDefaults.string(forKey: Keys.selectedTimeTracker),
-                  let provider = TimeTrackerProvider(rawValue: raw) else {
-                return .toggl
-            }
-            return provider
-        }
-        set {
-            userDefaults.set(newValue.rawValue, forKey: Keys.selectedTimeTracker)
-        }
-    }
-
     var userContext: String {
         get { userDefaults.string(forKey: Keys.userContext) ?? "" }
         set { userDefaults.set(newValue, forKey: Keys.userContext) }
@@ -81,6 +129,26 @@ final class PreferencesStore {
     func storeResolvedWorkspace(_ workspace: WorkspaceSummary?) {
         selectedWorkspaceID = workspace?.id
         selectedWorkspaceName = workspace?.name
+    }
+
+    func storeResolvedClockifyWorkspace(_ workspace: ClockifyWorkspaceSummary?) {
+        selectedClockifyWorkspaceID = workspace?.id
+        selectedClockifyWorkspaceName = workspace?.name
+    }
+
+    func storeResolvedHarvestAccount(_ account: HarvestAccountSummary?) {
+        selectedHarvestAccountID = account?.id
+        selectedHarvestAccountName = account?.name
+    }
+
+    func storeResolvedHarvestProject(_ project: HarvestProjectSummary?) {
+        selectedHarvestProjectID = project?.id
+        selectedHarvestProjectName = project?.name
+    }
+
+    func storeResolvedHarvestTask(_ task: HarvestTaskSummary?) {
+        selectedHarvestTaskID = task?.id
+        selectedHarvestTaskName = task?.name
     }
 
     private func setOptional(_ value: Any?, forKey key: String) {

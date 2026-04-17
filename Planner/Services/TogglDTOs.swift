@@ -22,7 +22,7 @@ struct TogglCreatedTimeEntryDTO: Decodable, Equatable {
     let description: String?
 }
 
-struct TogglTimeEntryCreateRequest: Encodable, Equatable {
+struct TogglTimeEntryCreateRequest: Codable, Equatable, Hashable {
     let billable: Bool?
     let createdWith: String
     let description: String
@@ -55,7 +55,7 @@ struct TogglTimeEntryCreateRequest: Encodable, Equatable {
             createdWith: AppConfiguration.createdWith,
             description: entry.description.trimmed,
             duration: Int(entry.stop.timeIntervalSince(entry.start)),
-            projectId: entry.projectId,
+            projectId: entry.togglTarget?.projectId,
             start: formatter.string(from: entry.start),
             stop: formatter.string(from: entry.stop),
             tags: entry.tags.trimmedDeduplicated(),

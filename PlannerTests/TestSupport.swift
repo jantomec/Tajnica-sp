@@ -1,6 +1,6 @@
 import Foundation
 
-@testable import Planner
+@testable import Tajnica_sp
 
 enum TestSupport {
     static let timeZone = TimeZone(identifier: "Europe/Ljubljana")!

@@ -1,6 +1,6 @@
 # Privacy Policy for Tajnica s.p.
 
-Effective date: 2026-04-07
+Effective date: 2026-04-15
 
 Tajnica s.p. is a time-entry assistant app. This policy explains what the app stores, what it sends to third-party services you choose to use, and what it does not collect.
 
@@ -16,8 +16,10 @@ The app stores some information locally on your device so it can work:
 
 The app sends data to third-party services only when you use features that depend on them:
 
-- your selected AI provider: Google Gemini, Anthropic Claude, or OpenAI
+- your selected cloud AI provider: Google Gemini, Anthropic Claude, or OpenAI
 - Toggl, when you test your connection, load workspaces/projects, or submit time entries
+
+If you choose Apple Foundation Models, note processing and "Polish with AI" run on-device through Apple's FoundationModels framework instead of a third-party cloud AI API.
 
 Clockify and Harvest appear in the app as future options, but based on the code reviewed they are not active yet and the app does not currently send data to those services.
 
@@ -25,7 +27,7 @@ Clockify and Harvest appear in the app as future options, but based on the code 
 
 The app stores the following locally on your device:
 
-- AI API keys for supported providers
+- AI API keys for supported cloud providers
 - your Toggl API token
 - your selected AI provider
 - your selected AI model
@@ -38,19 +40,22 @@ The app stores the following locally on your device:
 
 ### 1. AI providers
 
-When you process a note, the app sends the following to the AI provider you selected:
+If you choose Apple Foundation Models, the app processes your note and optional user-context text on-device and does not send that content to a third-party AI provider.
+
+If you choose a cloud AI provider, the app sends the following to the AI provider you selected:
 
 - your note text
 - the selected date
 - your local time zone
 - your optional user-context text, if you added it
 
-When you use the "Polish with AI" feature, the app sends your user-context text to the selected AI provider.
+When you use the "Polish with AI" feature with a cloud AI provider, the app sends your user-context text to that provider.
 
-When you test an AI connection, the app sends a small test request to the selected AI provider.
+When you test a cloud AI connection, the app sends a small test request to the selected AI provider. When the AI settings view checks Apple Foundation Models availability, the app checks the local system model state on-device.
 
 The app currently supports these providers:
 
+- Apple Foundation Models (on-device)
 - Google Gemini
 - Anthropic Claude
 - OpenAI
@@ -81,7 +86,7 @@ Based on the code reviewed, Tajnica s.p. does not:
 
 ## Third-Party Processing
 
-If you use AI or Toggl features, your data is processed by the third-party service you selected or connected.
+If you use a cloud AI provider or Toggl features, your data is processed by the third-party service you selected or connected.
 
 That means those providers may receive your request contents and normal network metadata needed to deliver the request, such as your IP address. This is an inference from the app making direct HTTPS requests to those services.
 
@@ -99,7 +104,7 @@ In practical terms:
 
 The app does not provide a developer-operated cloud account or central storage for this data.
 
-Retention by third-party AI providers or Toggl depends on those services and their policies.
+Retention by third-party cloud AI providers or Toggl depends on those services and their policies.
 
 ## Your Choices
 
@@ -115,7 +120,7 @@ You can remove locally stored credentials by clearing them in the app's settings
 
 ## Security
 
-The app stores API credentials in Apple Keychain storage and uses HTTPS network requests for supported external services, based on the code reviewed.
+The app stores API credentials in Apple Keychain storage and uses HTTPS network requests for supported external services, based on the code reviewed. If you choose Apple Foundation Models, AI processing can stay on-device.
 
 No software can guarantee absolute security, but the app is designed to keep sensitive credentials out of plain app preference storage.
 
