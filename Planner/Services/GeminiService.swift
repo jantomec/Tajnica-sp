@@ -6,16 +6,30 @@ protocol GeminiServicing: LLMServicing {}
 struct GeminiService: GeminiServicing {
     private let httpClient: HTTPClient
     private let decoder: JSONDecoder
-    private let retryDelaysNanoseconds: [UInt64]
+    private let retryPolicy: LLMRetryPolicy
 
     init(
         httpClient: HTTPClient,
         decoder: JSONDecoder = JSONDecoder(),
-        retryDelaysNanoseconds: [UInt64] = [300_000_000, 900_000_000]
+        retryPolicy: LLMRetryPolicy = LLMRetryPolicy()
     ) {
         self.httpClient = httpClient
         self.decoder = decoder
-        self.retryDelaysNanoseconds = retryDelaysNanoseconds
+        self.retryPolicy = retryPolicy
+    }
+
+    /// Compatibility initializer for older call sites and tests that pass an
+    /// explicit fixed schedule of delays.
+    init(
+        httpClient: HTTPClient,
+        decoder: JSONDecoder = JSONDecoder(),
+        retryDelaysNanoseconds: [UInt64]
+    ) {
+        self.init(
+            httpClient: httpClient,
+            decoder: decoder,
+            retryPolicy: .fixed(retryDelaysNanoseconds)
+        )
     }
 
     func extractTimeEntries(
@@ -78,38 +92,7 @@ struct GeminiService: GeminiServicing {
     }
 
     private func perform(_ request: URLRequest) async throws -> Data {
-        var attempt = 0
-
-        while true {
-            do {
-                let (data, response) = try await httpClient.data(for: request)
-                guard let httpResponse = response as? HTTPURLResponse else {
-                    throw PlannerServiceError.invalidResponse
-                }
-
-                guard (200..<300).contains(httpResponse.statusCode) else {
-                    let message = String(data: data, encoding: .utf8) ?? "Unknown Gemini error"
-                    let error = PlannerServiceError.api(statusCode: httpResponse.statusCode, message: message)
-
-                    guard shouldRetry(after: error, attempt: attempt) else {
-                        throw error
-                    }
-
-                    try await Task.sleep(nanoseconds: retryDelaysNanoseconds[attempt])
-                    attempt += 1
-                    continue
-                }
-
-                return data
-            } catch {
-                guard shouldRetry(after: error, attempt: attempt) else {
-                    throw error
-                }
-
-                try await Task.sleep(nanoseconds: retryDelaysNanoseconds[attempt])
-                attempt += 1
-            }
-        }
+        try await retryPolicy.perform(request, using: httpClient, providerLabel: "Gemini")
     }
 
     private func extractText(from data: Data) throws -> String {
@@ -125,29 +108,6 @@ struct GeminiService: GeminiServicing {
         }
 
         throw PlannerServiceError.emptyResponse("Gemini returned no structured content.")
-    }
-
-    private func shouldRetry(after error: Error, attempt: Int) -> Bool {
-        guard attempt < retryDelaysNanoseconds.count else {
-            return false
-        }
-
-        if case let PlannerServiceError.api(statusCode, _) = error {
-            return [429, 500, 502, 503, 504].contains(statusCode)
-        }
-
-        if let urlError = error as? URLError {
-            return [
-                .timedOut,
-                .cannotFindHost,
-                .cannotConnectToHost,
-                .dnsLookupFailed,
-                .networkConnectionLost,
-                .notConnectedToInternet
-            ].contains(urlError.code)
-        }
-
-        return false
     }
 }
 

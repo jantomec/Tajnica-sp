@@ -92,48 +92,50 @@ enum LLMExtractionPromptBuilder {
         """
     }
 
-    static func responseSchema() -> [String: Any] {
-        [
+    static func responseSchema(additionalPropertiesDisallowed: Bool = false) -> [String: Any] {
+        var entryItem: [String: Any] = [
+            "type": "object",
+            "properties": [
+                "date_local": ["type": "string"],
+                "start_local": ["type": "string"],
+                "stop_local": ["type": "string"],
+                "description": ["type": "string"],
+                "toggl_workspace_name": ["type": ["string", "null"]],
+                "toggl_project_name": ["type": ["string", "null"]],
+                "clockify_workspace_name": ["type": ["string", "null"]],
+                "clockify_project_name": ["type": ["string", "null"]],
+                "harvest_account_name": ["type": ["string", "null"]],
+                "harvest_project_name": ["type": ["string", "null"]],
+                "harvest_task_name": ["type": ["string", "null"]],
+                "tags": [
+                    "type": "array",
+                    "items": ["type": "string"]
+                ],
+                "billable": ["type": ["boolean", "null"]]
+            ],
+            "required": [
+                "date_local",
+                "start_local",
+                "stop_local",
+                "description",
+                "toggl_workspace_name",
+                "toggl_project_name",
+                "clockify_workspace_name",
+                "clockify_project_name",
+                "harvest_account_name",
+                "harvest_project_name",
+                "harvest_task_name",
+                "tags",
+                "billable"
+            ]
+        ]
+
+        var root: [String: Any] = [
             "type": "object",
             "properties": [
                 "entries": [
                     "type": "array",
-                    "items": [
-                        "type": "object",
-                        "properties": [
-                            "date_local": ["type": "string"],
-                            "start_local": ["type": "string"],
-                            "stop_local": ["type": "string"],
-                            "description": ["type": "string"],
-                            "toggl_workspace_name": ["type": ["string", "null"]],
-                            "toggl_project_name": ["type": ["string", "null"]],
-                            "clockify_workspace_name": ["type": ["string", "null"]],
-                            "clockify_project_name": ["type": ["string", "null"]],
-                            "harvest_account_name": ["type": ["string", "null"]],
-                            "harvest_project_name": ["type": ["string", "null"]],
-                            "harvest_task_name": ["type": ["string", "null"]],
-                            "tags": [
-                                "type": "array",
-                                "items": ["type": "string"]
-                            ],
-                            "billable": ["type": ["boolean", "null"]]
-                        ],
-                        "required": [
-                            "date_local",
-                            "start_local",
-                            "stop_local",
-                            "description",
-                            "toggl_workspace_name",
-                            "toggl_project_name",
-                            "clockify_workspace_name",
-                            "clockify_project_name",
-                            "harvest_account_name",
-                            "harvest_project_name",
-                            "harvest_task_name",
-                            "tags",
-                            "billable"
-                        ]
-                    ]
+                    "items": entryItem
                 ],
                 "assumptions": [
                     "type": "array",
@@ -143,6 +145,19 @@ enum LLMExtractionPromptBuilder {
             ],
             "required": ["entries", "assumptions", "summary"]
         ]
+
+        if additionalPropertiesDisallowed {
+            entryItem["additionalProperties"] = false
+            var properties = root["properties"] as? [String: Any] ?? [:]
+            properties["entries"] = [
+                "type": "array",
+                "items": entryItem
+            ] as [String: Any]
+            root["properties"] = properties
+            root["additionalProperties"] = false
+        }
+
+        return root
     }
 
     private static func togglPromptSection(from workspaces: [TogglWorkspaceCatalog]) -> String {

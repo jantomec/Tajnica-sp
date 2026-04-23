@@ -3,10 +3,16 @@ import Foundation
 struct ClaudeService: LLMServicing {
     private let httpClient: HTTPClient
     private let decoder: JSONDecoder
+    private let retryPolicy: LLMRetryPolicy
 
-    init(httpClient: HTTPClient, decoder: JSONDecoder = JSONDecoder()) {
+    init(
+        httpClient: HTTPClient,
+        decoder: JSONDecoder = JSONDecoder(),
+        retryPolicy: LLMRetryPolicy = LLMRetryPolicy()
+    ) {
         self.httpClient = httpClient
         self.decoder = decoder
+        self.retryPolicy = retryPolicy
     }
 
     func extractTimeEntries(
@@ -16,89 +22,84 @@ struct ClaudeService: LLMServicing {
         timeZone: TimeZone,
         extractionContext: LLMExtractionContext
     ) async throws -> GeminiExtractionResponse {
+        let userPrompt = LLMExtractionPromptBuilder.makeUserPrompt(
+            selectedDate: note.date,
+            timeZone: timeZone,
+            note: note.rawText,
+            context: extractionContext
+        )
+
         let payload: [String: Any] = [
             "model": model,
             "max_tokens": 4096,
-            "system": """
-            \(LLMExtractionPromptBuilder.systemInstruction)
-
-            You MUST respond with ONLY a valid JSON object (no markdown, no code blocks) matching this schema:
-            \(LLMExtractionPromptBuilder.jsonSchemaSummary)
-            """,
-            "messages": [
+            "system": LLMExtractionPromptBuilder.systemInstruction,
+            "tools": [
                 [
-                    "role": "user",
-                    "content": LLMExtractionPromptBuilder.makeUserPrompt(
-                        selectedDate: note.date,
-                        timeZone: timeZone,
-                        note: note.rawText,
-                        context: extractionContext
-                    )
+                    "name": Self.extractionToolName,
+                    "description": "Produces candidate time entries for \(AppConfiguration.displayName).",
+                    "input_schema": LLMExtractionPromptBuilder.responseSchema()
                 ]
+            ],
+            "tool_choice": ["type": "tool", "name": Self.extractionToolName],
+            "messages": [
+                ["role": "user", "content": userPrompt]
             ]
         ]
 
         let request = try makeRequest(apiKey: apiKey, payload: payload)
         let data = try await perform(request)
-        let text = try extractText(from: data)
-
-        guard let jsonData = text.data(using: .utf8) else {
-            throw PlannerServiceError.decoding("Claude returned unreadable output.")
-        }
-
-        do {
-            return try decoder.decode(GeminiExtractionResponse.self, from: jsonData)
-        } catch {
-            throw PlannerServiceError.decoding("Claude returned JSON that did not match the expected schema.")
-        }
+        return try decodeToolInput(GeminiExtractionResponse.self, from: data)
     }
 
     func testConnection(apiKey: String, model: String) async throws -> String {
         let payload: [String: Any] = [
             "model": model,
             "max_tokens": 256,
+            "system": "Return a tiny JSON status via the supplied tool.",
+            "tools": [
+                [
+                    "name": Self.connectionToolName,
+                    "description": "Reports that the Claude API is reachable.",
+                    "input_schema": [
+                        "type": "object",
+                        "properties": [
+                            "status": ["type": "string"]
+                        ],
+                        "required": ["status"]
+                    ]
+                ]
+            ],
+            "tool_choice": ["type": "tool", "name": Self.connectionToolName],
             "messages": [
-                ["role": "user", "content": "Return exactly this JSON and nothing else: {\"status\":\"ok\"}"]
+                ["role": "user", "content": "Use the tool to report {\"status\":\"ok\"}."]
             ]
         ]
 
         let request = try makeRequest(apiKey: apiKey, payload: payload)
         let data = try await perform(request)
-        let text = try extractText(from: data)
-
-        if text.contains("ok") {
-            return "ok"
-        }
-        return text
+        let payloadResponse = try decodeToolInput(ConnectionTestPayload.self, from: data)
+        return payloadResponse.status
     }
 
     func polishUserContext(apiKey: String, model: String, rawText: String) async throws -> String {
-        let systemPrompt = """
-        You help users describe themselves and their work patterns for a time-tracking app called \(AppConfiguration.displayName). \
-        The app feeds this description into an LLM to better predict and structure daily time entries.
-
-        Your job:
-        1. Take the user's raw text about themselves and polish it into a clear, structured description \
-        that will help an LLM make better time entry predictions.
-        2. If important information is missing, append questions directly in the text (prefixed with "Q: ") \
-        so the user can answer them and run the polish again.
-
-        Important details to capture (if not already present):
-        - Typical working hours (start time, end time, breaks)
-        - Type of work (engineering, design, management, consulting, etc.)
-        - Common projects or clients
-        - Recurring meetings or activities
-        - Preferred time block lengths
-        - Billable vs non-billable work patterns
-
-        Keep the tone professional but friendly. Write in first person from the user's perspective.
-        Respond with ONLY a JSON object: {"polished_text": "..."}
-        """
-
         let payload: [String: Any] = [
             "model": model,
             "max_tokens": 2048,
-            "system": systemPrompt,
+            "system": Self.polishSystemInstruction,
+            "tools": [
+                [
+                    "name": Self.polishToolName,
+                    "description": "Returns a polished user-context description.",
+                    "input_schema": [
+                        "type": "object",
+                        "properties": [
+                            "polished_text": ["type": "string"]
+                        ],
+                        "required": ["polished_text"]
+                    ]
+                ]
+            ],
+            "tool_choice": ["type": "tool", "name": Self.polishToolName],
             "messages": [
                 ["role": "user", "content": "Polish this user description for time-tracking context:\n\n\(rawText)"]
             ]
@@ -106,19 +107,37 @@ struct ClaudeService: LLMServicing {
 
         let request = try makeRequest(apiKey: apiKey, payload: payload)
         let data = try await perform(request)
-        let text = try extractText(from: data)
-
-        // Try to parse as JSON first
-        if let jsonData = text.data(using: .utf8),
-           let parsed = try? decoder.decode(PolishPayload.self, from: jsonData) {
-            return parsed.polishedText
-        }
-
-        // Fall back to raw text if not JSON
-        return text
+        let parsed = try decodeToolInput(PolishPayload.self, from: data)
+        return parsed.polishedText
     }
 
     // MARK: - Private
+
+    private static let extractionToolName = "emit_time_entries"
+    private static let connectionToolName = "report_status"
+    private static let polishToolName = "emit_polished_context"
+
+    private static let polishSystemInstruction = """
+    You help users describe themselves and their work patterns for a time-tracking app called \(AppConfiguration.displayName). \
+    The app feeds this description into an LLM to better predict and structure daily time entries.
+
+    Your job:
+    1. Take the user's raw text about themselves and polish it into a clear, structured description \
+    that will help an LLM make better time entry predictions.
+    2. If important information is missing, append questions directly in the text (prefixed with "Q: ") \
+    so the user can answer them and run the polish again.
+
+    Important details to capture (if not already present):
+    - Typical working hours (start time, end time, breaks)
+    - Type of work (engineering, design, management, consulting, etc.)
+    - Common projects or clients
+    - Recurring meetings or activities
+    - Preferred time block lengths
+    - Billable vs non-billable work patterns
+
+    Keep the tone professional but friendly. Write in first person from the user's perspective.
+    Return the polished text via the supplied tool only.
+    """
 
     private func makeRequest(apiKey: String, payload: [String: Any]) throws -> URLRequest {
         guard let url = URL(string: "https://api.anthropic.com/v1/messages") else {
@@ -135,49 +154,42 @@ struct ClaudeService: LLMServicing {
     }
 
     private func perform(_ request: URLRequest) async throws -> Data {
-        let (data, response) = try await httpClient.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw PlannerServiceError.invalidResponse
-        }
-
-        guard (200..<300).contains(httpResponse.statusCode) else {
-            let message = String(data: data, encoding: .utf8) ?? "Unknown Claude error"
-            throw PlannerServiceError.api(statusCode: httpResponse.statusCode, message: message)
-        }
-
-        return data
+        try await retryPolicy.perform(request, using: httpClient, providerLabel: "Claude")
     }
 
-    private func extractText(from data: Data) throws -> String {
-        let response = try decoder.decode(ClaudeResponse.self, from: data)
-
-        guard let textBlock = response.content.first(where: { $0.type == "text" }),
-              let text = textBlock.text, !text.isEmpty else {
-            throw PlannerServiceError.emptyResponse("Claude returned no content.")
+    /// Decodes the `input` of the first `tool_use` content block directly as
+    /// the caller's `Input` type. Claude's forced `tool_choice` guarantees the
+    /// block matches the declared `input_schema`, so this is the native
+    /// structured-output path for the Messages API.
+    private func decodeToolInput<Input: Decodable>(_: Input.Type, from data: Data) throws -> Input {
+        let response: ClaudeToolResponse<Input>
+        do {
+            response = try decoder.decode(ClaudeToolResponse<Input>.self, from: data)
+        } catch {
+            throw PlannerServiceError.decoding("Claude returned JSON that did not match the expected schema.")
         }
 
-        // Strip markdown code fences if present
-        var cleaned = text.trimmed
-        if cleaned.hasPrefix("```json") {
-            cleaned = String(cleaned.dropFirst(7))
-        } else if cleaned.hasPrefix("```") {
-            cleaned = String(cleaned.dropFirst(3))
+        guard let toolInput = response.content.first(where: { $0.type == "tool_use" })?.input else {
+            throw PlannerServiceError.emptyResponse("Claude returned no tool output.")
         }
-        if cleaned.hasSuffix("```") {
-            cleaned = String(cleaned.dropLast(3))
-        }
-
-        return cleaned.trimmed
+        return toolInput
     }
 }
 
-private struct ClaudeResponse: Decodable {
+/// Generic wrapper for Claude's Messages response when the caller expects a
+/// `tool_use` content block. `input` is declared optional so text blocks (which
+/// omit the field entirely) decode cleanly alongside the tool-use block.
+private struct ClaudeToolResponse<Input: Decodable>: Decodable {
     struct ContentBlock: Decodable {
         let type: String
-        let text: String?
+        let input: Input?
     }
 
     let content: [ContentBlock]
+}
+
+private struct ConnectionTestPayload: Decodable {
+    let status: String
 }
 
 private struct PolishPayload: Decodable {

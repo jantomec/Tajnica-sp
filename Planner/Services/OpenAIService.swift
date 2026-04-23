@@ -3,10 +3,16 @@ import Foundation
 struct OpenAIService: LLMServicing {
     private let httpClient: HTTPClient
     private let decoder: JSONDecoder
+    private let retryPolicy: LLMRetryPolicy
 
-    init(httpClient: HTTPClient, decoder: JSONDecoder = JSONDecoder()) {
+    init(
+        httpClient: HTTPClient,
+        decoder: JSONDecoder = JSONDecoder(),
+        retryPolicy: LLMRetryPolicy = LLMRetryPolicy()
+    ) {
         self.httpClient = httpClient
         self.decoder = decoder
+        self.retryPolicy = retryPolicy
     }
 
     func extractTimeEntries(
@@ -16,29 +22,27 @@ struct OpenAIService: LLMServicing {
         timeZone: TimeZone,
         extractionContext: LLMExtractionContext
     ) async throws -> GeminiExtractionResponse {
+        let userPrompt = LLMExtractionPromptBuilder.makeUserPrompt(
+            selectedDate: note.date,
+            timeZone: timeZone,
+            note: note.rawText,
+            context: extractionContext
+        )
+
         let payload: [String: Any] = [
             "model": model,
             "temperature": 0.2,
-            "response_format": ["type": "json_object"],
-            "messages": [
-                [
-                    "role": "system",
-                    "content": """
-                    \(LLMExtractionPromptBuilder.systemInstruction)
-
-                    You MUST respond with ONLY a valid JSON object (no markdown, no code blocks) matching this schema:
-                    \(LLMExtractionPromptBuilder.jsonSchemaSummary)
-                    """
-                ],
-                [
-                    "role": "user",
-                    "content": LLMExtractionPromptBuilder.makeUserPrompt(
-                        selectedDate: note.date,
-                        timeZone: timeZone,
-                        note: note.rawText,
-                        context: extractionContext
-                    )
+            "response_format": [
+                "type": "json_schema",
+                "json_schema": [
+                    "name": "planner_time_entries",
+                    "strict": true,
+                    "schema": LLMExtractionPromptBuilder.responseSchema(additionalPropertiesDisallowed: true)
                 ]
+            ],
+            "messages": [
+                ["role": "system", "content": LLMExtractionPromptBuilder.systemInstruction],
+                ["role": "user", "content": userPrompt]
             ]
         ]
 
@@ -61,21 +65,36 @@ struct OpenAIService: LLMServicing {
         let payload: [String: Any] = [
             "model": model,
             "max_tokens": 64,
-            "response_format": ["type": "json_object"],
+            "response_format": [
+                "type": "json_schema",
+                "json_schema": [
+                    "name": "planner_connection_status",
+                    "strict": true,
+                    "schema": [
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": [
+                            "status": ["type": "string"]
+                        ],
+                        "required": ["status"]
+                    ]
+                ]
+            ],
             "messages": [
-                ["role": "system", "content": "Respond with JSON only."],
-                ["role": "user", "content": "Return exactly: {\"status\":\"ok\"}"]
+                ["role": "system", "content": "Respond using the configured JSON schema."],
+                ["role": "user", "content": "Return status \"ok\"."]
             ]
         ]
 
         let request = try makeRequest(apiKey: apiKey, payload: payload)
         let data = try await perform(request)
         let text = try extractText(from: data)
-
-        if text.contains("ok") {
-            return "ok"
+        guard let jsonData = text.data(using: .utf8) else {
+            throw PlannerServiceError.decoding("OpenAI returned unreadable test output.")
         }
-        return text
+
+        let payloadResponse = try decoder.decode(ConnectionTestPayload.self, from: jsonData)
+        return payloadResponse.status
     }
 
     func polishUserContext(apiKey: String, model: String, rawText: String) async throws -> String {
@@ -98,12 +117,26 @@ struct OpenAIService: LLMServicing {
         - Billable vs non-billable work patterns
 
         Keep the tone professional but friendly. Write in first person from the user's perspective.
-        Respond with ONLY a JSON object: {"polished_text": "..."}
+        Return the polished text via the configured JSON schema.
         """
 
         let payload: [String: Any] = [
             "model": model,
-            "response_format": ["type": "json_object"],
+            "response_format": [
+                "type": "json_schema",
+                "json_schema": [
+                    "name": "planner_polished_context",
+                    "strict": true,
+                    "schema": [
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": [
+                            "polished_text": ["type": "string"]
+                        ],
+                        "required": ["polished_text"]
+                    ]
+                ]
+            ],
             "messages": [
                 ["role": "system", "content": systemPrompt],
                 ["role": "user", "content": "Polish this user description for time-tracking context:\n\n\(rawText)"]
@@ -114,12 +147,12 @@ struct OpenAIService: LLMServicing {
         let data = try await perform(request)
         let text = try extractText(from: data)
 
-        if let jsonData = text.data(using: .utf8),
-           let parsed = try? decoder.decode(PolishPayload.self, from: jsonData) {
-            return parsed.polishedText
+        guard let jsonData = text.data(using: .utf8) else {
+            throw PlannerServiceError.decoding("OpenAI returned unreadable output.")
         }
 
-        return text
+        let parsed = try decoder.decode(PolishPayload.self, from: jsonData)
+        return parsed.polishedText
     }
 
     // MARK: - Private
@@ -138,24 +171,17 @@ struct OpenAIService: LLMServicing {
     }
 
     private func perform(_ request: URLRequest) async throws -> Data {
-        let (data, response) = try await httpClient.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw PlannerServiceError.invalidResponse
-        }
-
-        guard (200..<300).contains(httpResponse.statusCode) else {
-            let message = String(data: data, encoding: .utf8) ?? "Unknown OpenAI error"
-            throw PlannerServiceError.api(statusCode: httpResponse.statusCode, message: message)
-        }
-
-        return data
+        try await retryPolicy.perform(request, using: httpClient, providerLabel: "OpenAI")
     }
 
     private func extractText(from data: Data) throws -> String {
         let response = try decoder.decode(OpenAIResponse.self, from: data)
 
-        guard let choice = response.choices.first,
-              let text = choice.message.content, !text.isEmpty else {
+        if let refusal = response.choices.first?.message.refusal, !refusal.isEmpty {
+            throw PlannerServiceError.emptyResponse("OpenAI refused the request: \(refusal)")
+        }
+
+        guard let text = response.choices.first?.message.content, !text.isEmpty else {
             throw PlannerServiceError.emptyResponse("OpenAI returned no content.")
         }
 
@@ -167,11 +193,16 @@ private struct OpenAIResponse: Decodable {
     struct Choice: Decodable {
         struct Message: Decodable {
             let content: String?
+            let refusal: String?
         }
         let message: Message
     }
 
     let choices: [Choice]
+}
+
+private struct ConnectionTestPayload: Decodable {
+    let status: String
 }
 
 private struct PolishPayload: Decodable {
