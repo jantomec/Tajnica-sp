@@ -984,6 +984,68 @@ struct DiaryFeatureTests {
             _ = try await facade.assignHarvestTask(entryID: entryID, accountID: 7, projectID: 12, taskID: 18)
         }
     }
+
+    // MARK: - Successful Connection Tests Fetch Reference Data
+
+    @MainActor
+    @Test
+    func successfulTogglConnectionTestLoadsCatalogsAndPersistsResolvedWorkspace() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(togglToken: "toggl-token")
+        await model.testTogglConnection()
+
+        #expect(model.togglTestResult?.isError == false)
+        #expect(model.togglWorkspaceCatalogs.count == 1)
+        #expect(model.togglWorkspaceCatalogs.first?.workspace.id == 1)
+        #expect(model.togglWorkspaceCatalogs.first?.workspace.name == "Workspace")
+        #expect(model.togglWorkspaceCatalogs.first?.projects.first?.id == 101)
+        #expect(model.resolvedWorkspace?.id == 1)
+        #expect(context.preferencesStore.selectedWorkspaceID == 1)
+        #expect(context.preferencesStore.selectedWorkspaceName == "Workspace")
+    }
+
+    @MainActor
+    @Test
+    func successfulClockifyConnectionTestLoadsCatalogsAndPersistsResolvedWorkspace() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(clockifyToken: "clockify-token")
+        await model.testClockifyConnection()
+
+        #expect(model.clockifyTestResult?.isError == false)
+        #expect(model.clockifyWorkspaceCatalogs.count == 1)
+        #expect(model.clockifyWorkspaceCatalogs.first?.workspace.id == "workspace-1")
+        #expect(model.clockifyWorkspaceCatalogs.first?.workspace.name == "Clockify Workspace")
+        #expect(model.clockifyWorkspaceCatalogs.first?.projects.first?.id == "clockify-project-1")
+        #expect(model.resolvedClockifyWorkspace?.id == "workspace-1")
+        #expect(context.preferencesStore.selectedClockifyWorkspaceID == "workspace-1")
+        #expect(context.preferencesStore.selectedClockifyWorkspaceName == "Clockify Workspace")
+    }
+
+    @MainActor
+    @Test
+    func successfulHarvestConnectionTestLoadsCatalogsAndPersistsResolvedAccount() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(harvestToken: "harvest-token")
+        await model.testHarvestConnection()
+
+        #expect(model.harvestTestResult?.isError == false)
+        #expect(model.harvestAccountCatalogs.count == 2)
+        #expect(model.harvestAccountCatalogs.first?.account.id == 7)
+        #expect(model.harvestAccountCatalogs.first?.projects.first?.id == 12)
+        #expect(model.harvestAccountCatalogs.first?.projects.first?.taskAssignments.first?.id == 18)
+        #expect(model.resolvedHarvestAccount?.id == 7)
+        #expect(context.preferencesStore.selectedHarvestAccountID == 7)
+        #expect(context.preferencesStore.selectedHarvestAccountName == "Harvest Account")
+        // With multiple accounts, project and task are not auto-selected until the user picks an account.
+        #expect(context.preferencesStore.selectedHarvestProjectID == nil)
+        #expect(context.preferencesStore.selectedHarvestTaskID == nil)
+    }
 }
 
 @MainActor
