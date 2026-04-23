@@ -1,22 +1,22 @@
 import Foundation
 
 extension String {
-    var trimmed: String {
+    nonisolated var trimmed: String {
         trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    var nilIfBlank: String? {
+    nonisolated var nilIfBlank: String? {
         let value = trimmed
         return value.isEmpty ? nil : value
     }
 
-    var isBlank: Bool {
+    nonisolated var isBlank: Bool {
         trimmed.isEmpty
     }
 }
 
 extension Array where Element == String {
-    func trimmedDeduplicated() -> [String] {
+    nonisolated func trimmedDeduplicated() -> [String] {
         var seen = Set<String>()
         var values: [String] = []
 

@@ -9,46 +9,19 @@ enum GeminiRequestFactory {
         selectedDate: Date,
         timeZone: TimeZone,
         note: String,
-        userContext: String? = nil,
-        availableProjects: [String] = []
+        extractionContext: LLMExtractionContext
     ) throws -> URLRequest {
-        let isoDate = PlannerFormatters.isoLocalDateString(selectedDate, timeZone: timeZone)
-        var prompt = """
-        Today's date is \(isoDate).
-        Local timezone: \(timeZone.identifier)
-
-        User note:
-        \(note)
-        """
-
-        if let context = userContext?.trimmed, !context.isEmpty {
-            prompt += "\n\nUser context (use this to better understand the user's work patterns):\n\(context)"
-        }
-
-        if !availableProjects.isEmpty {
-            let list = availableProjects.map { "- \($0)" }.joined(separator: "\n")
-            prompt += "\n\nAvailable Toggl projects (use the exact name in \"project_name\" when an entry clearly belongs to one; otherwise leave it null):\n\(list)"
-        }
-
-        let systemInstruction = """
-        Convert the user's note into candidate Toggl time entries.
-        Determine the correct date for each entry from the note content. \
-        If the note says "yesterday" or references a past day, use that day's date (YYYY-MM-DD). \
-        If no specific day is mentioned, default to today's date.
-        Each entry MUST include a "date_local" field in YYYY-MM-DD format.
-        Infer reasonable contiguous time blocks.
-        Do not fabricate high-confidence details that are not supported by the note.
-        Keep descriptions concise and suitable for Toggl Track.
-        If user context is provided, use it to make better inferences about working hours, typical activities, and project assignments.
-        Use only the requested JSON schema output.
-        """
-
         return try makeRequest(
             apiKey: apiKey,
             model: model,
-            systemInstruction: systemInstruction,
-            prompt: prompt,
-            responseSchema: extractionResponseSchema()
+            systemInstruction: LLMExtractionPromptBuilder.systemInstruction,
+            prompt: LLMExtractionPromptBuilder.makeUserPrompt(
+                selectedDate: selectedDate,
+                timeZone: timeZone,
+                note: note,
+                context: extractionContext
+            ),
+            responseSchema: LLMExtractionPromptBuilder.responseSchema()
         )
     }
 
@@ -76,7 +49,7 @@ enum GeminiRequestFactory {
         rawText: String
     ) throws -> URLRequest {
         let systemInstruction = """
-        You help users describe themselves and their work patterns for a time-tracking app called Planner. \
+        You help users describe themselves and their work patterns for a time-tracking app called \(AppConfiguration.displayName). \
         The app feeds this description into an LLM to better predict and structure daily time entries.
 
         Your job:
@@ -157,46 +130,5 @@ enum GeminiRequestFactory {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONSerialization.data(withJSONObject: payload)
         return request
-    }
-
-    private static func extractionResponseSchema() -> [String: Any] {
-        [
-            "type": "object",
-            "properties": [
-                "entries": [
-                    "type": "array",
-                    "items": [
-                        "type": "object",
-                        "properties": [
-                            "date_local": ["type": "string"],
-                            "start_local": ["type": "string"],
-                            "stop_local": ["type": "string"],
-                            "description": ["type": "string"],
-                            "project_name": ["type": ["string", "null"]],
-                            "tags": [
-                                "type": "array",
-                                "items": ["type": "string"]
-                            ],
-                            "billable": ["type": ["boolean", "null"]]
-                        ],
-                        "required": [
-                            "date_local",
-                            "start_local",
-                            "stop_local",
-                            "description",
-                            "project_name",
-                            "tags",
-                            "billable"
-                        ]
-                    ]
-                ],
-                "assumptions": [
-                    "type": "array",
-                    "items": ["type": "string"]
-                ],
-                "summary": ["type": ["string", "null"]]
-            ],
-            "required": ["entries", "assumptions", "summary"]
-        ]
     }
 }

@@ -11,4 +11,15 @@ enum WorkspaceSelectionResolver {
 
         return fetchedWorkspaces.first
     }
+
+    static func resolve(savedWorkspaceID: String?, fetchedWorkspaces: [ClockifyWorkspaceSummary]) -> ClockifyWorkspaceSummary? {
+        guard !fetchedWorkspaces.isEmpty else { return nil }
+
+        if let savedWorkspaceID,
+           let match = fetchedWorkspaces.first(where: { $0.id == savedWorkspaceID }) {
+            return match
+        }
+
+        return fetchedWorkspaces.first
+    }
 }

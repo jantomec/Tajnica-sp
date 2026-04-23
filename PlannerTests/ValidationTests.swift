@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-@testable import Planner
+@testable import Tajnica_sp
 
 struct ValidationTests {
     @Test
@@ -24,7 +24,7 @@ struct ValidationTests {
             source: .user
         )
 
-        let entries = validator.validate(entries: [first, second], submissionWorkspaceID: nil)
+        let entries = validator.validate(entries: [first, second])
 
         #expect(entries[0].validationIssues.contains(where: { $0.message.contains("overlaps") }))
         #expect(entries[1].validationIssues.contains(where: { $0.message.contains("overlaps") }))
@@ -50,7 +50,7 @@ struct ValidationTests {
             source: .user
         )
 
-        let entries = validator.validate(entries: [zeroDuration, negativeDuration], submissionWorkspaceID: nil)
+        let entries = validator.validate(entries: [zeroDuration, negativeDuration])
 
         #expect(entries[0].validationIssues.contains(where: { $0.message.contains("zero duration") }))
         #expect(entries[1].validationIssues.contains(where: { $0.message.contains("after start") }))

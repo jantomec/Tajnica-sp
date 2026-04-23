@@ -6,6 +6,7 @@ struct PlannerDraft: Codable, Equatable {
     var assumptions: [String]
     var summary: String?
     var lastProcessedAt: Date?
+    var sourceDiaryPromptID: UUID? = nil
 
     static func empty(on date: Date) -> PlannerDraft {
         PlannerDraft(
@@ -13,7 +14,8 @@ struct PlannerDraft: Codable, Equatable {
             candidateEntries: [],
             assumptions: [],
             summary: nil,
-            lastProcessedAt: nil
+            lastProcessedAt: nil,
+            sourceDiaryPromptID: nil
         )
     }
 }

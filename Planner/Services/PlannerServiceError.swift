@@ -7,6 +7,8 @@ enum PlannerServiceError: LocalizedError, Equatable {
     case api(statusCode: Int, message: String)
     case decoding(String)
     case noResolvedWorkspace
+    case noResolvedClockifyWorkspace
+    case noResolvedHarvestTarget
     case partialSubmission(createdCount: Int, totalCount: Int, message: String)
 
     var errorDescription: String? {
@@ -26,6 +28,10 @@ enum PlannerServiceError: LocalizedError, Equatable {
             return message
         case .noResolvedWorkspace:
             return "No workspace could be resolved from live Toggl data."
+        case .noResolvedClockifyWorkspace:
+            return "No workspace could be resolved from Clockify."
+        case .noResolvedHarvestTarget:
+            return "No Harvest account, project, or task could be resolved from the saved token."
         case let .partialSubmission(createdCount, totalCount, message):
             return "Submitted \(createdCount) of \(totalCount) entries before failing: \(message)"
         }

@@ -21,7 +21,26 @@ enum GeminiEntryConverter {
                 start: start,
                 stop: stop,
                 description: entry.description,
-                projectName: entry.projectName,
+                togglTarget: CandidateTimeEntry.TogglTarget(
+                    workspaceName: entry.togglWorkspaceName?.trimmed.nilIfBlank,
+                    workspaceId: nil,
+                    projectName: entry.togglProjectName?.trimmed.nilIfBlank,
+                    projectId: nil
+                ),
+                clockifyTarget: CandidateTimeEntry.ClockifyTarget(
+                    workspaceName: entry.clockifyWorkspaceName?.trimmed.nilIfBlank,
+                    workspaceId: nil,
+                    projectName: entry.clockifyProjectName?.trimmed.nilIfBlank,
+                    projectId: nil
+                ),
+                harvestTarget: CandidateTimeEntry.HarvestTarget(
+                    accountName: entry.harvestAccountName?.trimmed.nilIfBlank,
+                    accountId: nil,
+                    projectName: entry.harvestProjectName?.trimmed.nilIfBlank,
+                    projectId: nil,
+                    taskName: entry.harvestTaskName?.trimmed.nilIfBlank,
+                    taskId: nil
+                ),
                 tags: entry.tags,
                 billable: entry.billable,
                 source: .gemini

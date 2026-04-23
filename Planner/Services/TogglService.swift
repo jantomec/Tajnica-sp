@@ -5,9 +5,8 @@ protocol TogglServicing {
     func fetchWorkspaces(apiToken: String) async throws -> [WorkspaceSummary]
     func fetchProjects(apiToken: String, workspaceID: Int) async throws -> [ProjectSummary]
     func createTimeEntries(
-        _ payloads: [TogglTimeEntryCreateRequest],
-        apiToken: String,
-        workspaceID: Int
+        _ submissions: [StoredTimeEntryRecord.TogglSubmission],
+        apiToken: String
     ) async throws -> [TogglCreatedTimeEntryDTO]
 }
 
@@ -36,25 +35,24 @@ struct TogglService: TogglServicing {
     }
 
     func createTimeEntries(
-        _ payloads: [TogglTimeEntryCreateRequest],
-        apiToken: String,
-        workspaceID: Int
+        _ submissions: [StoredTimeEntryRecord.TogglSubmission],
+        apiToken: String
     ) async throws -> [TogglCreatedTimeEntryDTO] {
         var createdEntries: [TogglCreatedTimeEntryDTO] = []
 
-        for payload in payloads {
+        for submission in submissions {
             do {
                 let request = try TogglRequestFactory.makeCreateTimeEntryRequest(
                     apiToken: apiToken,
-                    workspaceID: workspaceID,
-                    payload: payload
+                    workspaceID: submission.workspaceID,
+                    payload: submission.request
                 )
                 let created: TogglCreatedTimeEntryDTO = try await perform(request, expectedStatusCodes: 200..<300)
                 createdEntries.append(created)
             } catch {
                 throw PlannerServiceError.partialSubmission(
                     createdCount: createdEntries.count,
-                    totalCount: payloads.count,
+                    totalCount: submissions.count,
                     message: error.localizedDescription
                 )
             }
