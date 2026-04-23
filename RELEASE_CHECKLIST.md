@@ -15,7 +15,7 @@ Treat this file as locked once release review starts. Any exception should be do
 
 ## Current Audit Snapshot (2026-04-19)
 
-- [ ] `Automated`: remove remaining legacy `Planner` user-facing copy from intents, dialogs, exports, tests, and docs.
+- [x] `Automated`: remove remaining legacy `Planner` user-facing copy from intents, dialogs, exports, tests, and docs. Covered by `ReleaseReadinessTests.appSourcesDoNotLeakLegacyPlannerIntoStringLiterals`, which scans every Swift file under `Planner/` for string literals containing `Planner` and fails unless the line matches the documented allowlist (bundle-ID fallbacks and legacy storage namespaces called out under the `Decision` entries below).
 - [x] `Decision`: keep the legacy technical identifiers intentionally unchanged for storage continuity:
   `JanTomec.Planner`, `planner://`, and `iCloud.com.jantomec.planner`.
 - [x] `Decision`: Debug and Release use different `PRODUCT_BUNDLE_IDENTIFIER` values intentionally — Debug

@@ -45,7 +45,7 @@ enum PlannerDeepLink: Equatable {
         }
 
         guard let url = components.url else {
-            preconditionFailure("Failed to build Planner deep link URL.")
+            preconditionFailure("Failed to build deep link URL.")
         }
 
         return url
