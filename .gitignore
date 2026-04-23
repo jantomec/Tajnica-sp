@@ -5,3 +5,13 @@ Planner.xcodeproj/xcuserdata/
 Planner.xcodeproj/project.xcworkspace/xcuserdata/
 Planner.xcodeproj
 Planner.xcodeproj/project.pbxproj
+
+# Never commit local secrets (smoke-test credentials, scratch notes with tokens, etc.)
+*.local
+*.local.md
+smoke-test-credentials.local.md
+# The shared scheme's Test action carries smoke-test credentials as environment
+# variables. If the current blanket `Planner.xcodeproj` ignore is ever narrowed,
+# this explicit rule keeps scheme files (and therefore those secrets) out of git.
+Planner.xcodeproj/xcshareddata/xcschemes/*.xcscheme
+*.xcscheme

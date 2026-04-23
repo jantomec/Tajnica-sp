@@ -22,13 +22,13 @@ Treat this file as locked once release review starts. Any exception should be do
   builds use `com.jantomec.planner` for local development, and Release ships as `JanTomec.Planner` to
   preserve storage continuity with the original distribution. Do not unify them.
 - [x] `Manual`: resolve the macOS build warning about `UIBackgroundModes` containing `remote-notification` by scoping it to iOS SDK builds only.
-- [ ] `Ops`: define release smoke-test credentials and safe test workspaces/accounts for Gemini, Claude, OpenAI, Toggl, Clockify, and Harvest. Official docs review did not confirm dedicated sandbox/test endpoints, so plan on approved non-production accounts or workspaces.
+- [ ] `Ops`: define release smoke-test credentials and safe test workspaces/accounts for Gemini, Claude, OpenAI, Toggl, Clockify, and Harvest. Official docs review did not confirm dedicated sandbox/test endpoints, so plan on approved non-production accounts or workspaces. Credentials live in the gitignored Planner scheme (Test action → Environment Variables, names `TAJNICA_SMOKE_*`); the gitignored `smoke-test-credentials.local.md` documents which dummy account each variable maps to. Current status: Gemini (AI Studio free-tier, `gemini-2.5-flash`) and Toggl (dummy account) provisioned and exercised by `PlannerTests/SmokeTests.swift`; Claude, OpenAI, Clockify, and Harvest still to define.
 - [ ] `Manual`: complete a final multi-device smoke pass on macOS, iPhone, and iPad before release.
 
 ## Product Identity And Packaging
 
 - [x] `Automated`: all user-facing copy uses `Tajnica s.p.` or neutral wording instead of `Planner`. Enforced by `ReleaseReadinessTests.appSourcesDoNotLeakLegacyPlannerIntoStringLiterals` (Swift-source string literals) plus `disabledLLMCopyUsesReleaseName` and `exportFilenamePrefixMatchesReleaseBrand` (specific brand-critical surfaces); the release `CFBundleDisplayName` is pinned to `Tajnica s.p.` in the project build settings.
-- [ ] `Manual`: app icon, app name, accent color, and screenshots match the release brand.
+- [x] `Manual`: app icon, app name, accent color, and screenshots match the release brand.
 - [x] `Decision`: keep the Release bundle identifier `JanTomec.Planner` to preserve storage continuity and
   existing integrations; Debug intentionally uses `com.jantomec.planner` and the divergence is expected.
 - [x] `Decision`: keep the deep-link URL scheme to preserve legacy automation and existing links.
@@ -65,7 +65,7 @@ Treat this file as locked once release review starts. Any exception should be do
 - [x] `Automated`: OpenAI connection test, extraction, and fallback behavior are covered.
 - [x] `Automated`: shared retry policy honors Retry-After, exponential backoff with jitter, and the full list of retryable status codes across every cloud provider.
 - [ ] `Automated`: "Polish with AI" works and reports useful failures.
-- [ ] `Manual`: real provider smoke tests succeed with release credentials and acceptable latency/cost.
+- [ ] `Manual`: real provider smoke tests succeed with release credentials and acceptable latency/cost. Partial coverage: `PlannerTests/SmokeTests.swift` exercises Gemini connection and extraction live against the scheme-provided credentials; Claude and OpenAI still manual until their keys are provisioned.
 - [ ] `Ops`: quotas, billing alerts, and key rotation procedures are defined for every enabled provider.
 - [ ] `Decision`: confirm which providers are officially supported in release copy and support docs.
 
@@ -76,7 +76,7 @@ Treat this file as locked once release review starts. Any exception should be do
 - [ ] `Automated`: successful connection tests fetch reference data and persist usable selections where supported.
 - [x] `Automated`: submit can save locally and push to every enabled external tracker combination that is represented in automated tests.
 - [ ] `Automated`: partial submission failures are reported without losing locally stored entries.
-- [ ] `Manual`: live Toggl smoke test succeeds against a non-production workspace or an approved release workspace.
+- [ ] `Manual`: live Toggl smoke test succeeds against a non-production workspace or an approved release workspace. Partial coverage: `PlannerTests/SmokeTests.swift` exercises Toggl `fetchCurrentUser` and `fetchWorkspaces` live; submit + cleanup is still manual.
 - [ ] `Manual`: live Clockify smoke test succeeds against a non-production workspace or an approved release workspace.
 - [ ] `Manual`: live Harvest smoke test succeeds against a non-production account/project/task or an approved release workspace.
 - [ ] `Ops`: document the exact credentials, workspace/account names, and cleanup steps used for release smoke tests.
