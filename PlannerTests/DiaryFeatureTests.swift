@@ -222,6 +222,41 @@ struct DiaryFeatureTests {
 
     @MainActor
     @Test
+    func submitEntriesPushesToAllConfiguredDestinations() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(
+            togglToken: "token",
+            clockifyToken: "token",
+            harvestToken: "token"
+        )
+        model.updateRawText("Client implementation")
+
+        await model.processNote()
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+        model.setHarvestAssignment(id: entryID, accountID: 7, projectID: 12, taskID: 18)
+
+        await model.submitEntries()
+
+        let snapshot = try context.persistenceController.repository.loadSnapshot(currentDay: context.day)
+        let storedEntry = try #require(snapshot.storedEntries.first)
+
+        #expect(model.reviewErrorMessage == nil)
+        #expect(
+            model.captureStatusMessage
+                == "Saved 1 entries to \(AppConfiguration.displayName) Storage and submitted them to Toggl, Clockify, and Harvest."
+        )
+        #expect(storedEntry.toggl?.workspaceID == 1)
+        #expect(storedEntry.clockify?.workspaceID == "workspace-1")
+        #expect(storedEntry.harvest?.accountID == 7)
+        #expect(storedEntry.harvest?.projectID == 12)
+        #expect(storedEntry.harvest?.taskID == 18)
+    }
+
+    @MainActor
+    @Test
     func submitEntriesLinksStoredEntriesBackToTheOriginatingDiaryPrompt() async throws {
         let context = TestContext()
         defer { context.cleanup() }
@@ -270,6 +305,97 @@ struct DiaryFeatureTests {
         #expect(payload.entries.count == 1)
         #expect(payload.entries.first?.workspaceID == 1)
         #expect(payload.entries.first?.request.description == "Deep work")
+        #expect(export.filename == expectedExportFilename(format: .toggl, day: exportDay))
+    }
+
+    @MainActor
+    @Test
+    func exportCanEmitClockifyPayloadsFromStoredEntries() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(clockifyToken: "token")
+        model.updateRawText("Client implementation")
+
+        await model.processNote()
+        await model.submitEntries()
+        let exportDay = try #require(model.storedEntries.first?.date)
+
+        let export = try model.prepareAppStorageExport(
+            format: .clockify,
+            startDate: exportDay,
+            endDate: exportDay
+        )
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let payload = try decoder.decode(
+            AppStorageExportEnvelope<ClockifyAppStorageExportEntry>.self,
+            from: export.document.data
+        )
+
+        #expect(payload.format == .clockify)
+        #expect(payload.entries.count == 1)
+        #expect(payload.entries.first?.workspaceID == "workspace-1")
+        #expect(payload.entries.first?.request.description == "Deep work")
+        #expect(export.filename == expectedExportFilename(format: .clockify, day: exportDay))
+    }
+
+    @MainActor
+    @Test
+    func exportCanEmitHarvestPayloadsFromStoredEntries() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(harvestToken: "token")
+        model.updateRawText("Client implementation")
+
+        await model.processNote()
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+        model.setHarvestAssignment(id: entryID, accountID: 7, projectID: 12, taskID: 18)
+        await model.submitEntries()
+        let exportDay = try #require(model.storedEntries.first?.date)
+
+        let export = try model.prepareAppStorageExport(
+            format: .harvest,
+            startDate: exportDay,
+            endDate: exportDay
+        )
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let payload = try decoder.decode(
+            AppStorageExportEnvelope<HarvestAppStorageExportEntry>.self,
+            from: export.document.data
+        )
+
+        #expect(payload.format == .harvest)
+        #expect(payload.entries.count == 1)
+        #expect(payload.entries.first?.accountID == 7)
+        #expect(payload.entries.first?.projectID == 12)
+        #expect(payload.entries.first?.taskID == 18)
+        #expect(payload.entries.first?.timestampRequest.notes == "Deep work")
+        #expect(export.filename == expectedExportFilename(format: .harvest, day: exportDay))
+    }
+
+    @MainActor
+    @Test
+    func refreshTimeTrackerConnectionsOnViewLoadRetestsStoredCredentials() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(
+            togglToken: "token",
+            clockifyToken: "token",
+            harvestToken: "token"
+        )
+
+        await model.refreshTimeTrackerConnectionsOnViewLoad()
+
+        #expect(model.togglTestResult?.isError == false)
+        #expect(model.clockifyTestResult?.isError == false)
+        #expect(model.harvestTestResult?.isError == false)
+        #expect(model.togglTestResult?.message.contains("Connected as Test User") == true)
+        #expect(model.clockifyTestResult?.message.contains("Connected as Clockify User") == true)
+        #expect(model.harvestTestResult?.message.contains("Connected as Harvest User") == true)
     }
 
     @MainActor
@@ -302,7 +428,7 @@ struct DiaryFeatureTests {
         let message = try await facade.appendToCurrentDraft("Morning standup and planning")
 
         #expect(model.draft.note.rawText == "Morning standup and planning")
-        #expect(message.contains("Added to today's Planner draft."))
+        #expect(message.contains("Added to today's draft."))
         #expect(message.contains("there are no candidate entries yet"))
     }
 
@@ -542,6 +668,27 @@ struct DiaryFeatureTests {
             _ = try await facade.submitCurrentDraft()
         }
     }
+
+    @MainActor
+    @Test
+    func intentFacadeUsesReleaseNameForTrackerConnectionErrors() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+        let facade = PlannerIntentFacade(appModel: model, startsModelOnUse: true)
+        let start = TestSupport.localDate(on: context.day, hour: 9, minute: 0)
+        let stop = TestSupport.localDate(on: context.day, hour: 10, minute: 0)
+        model.addDraftEntry(description: "Bug fixing", start: start, stop: stop)
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+
+        await #expect(
+            throws: PlannerIntentError(message: "Toggl is not connected in \(AppConfiguration.displayName)")
+        ) {
+            _ = try await facade.assignTogglWorkspace(entryID: entryID, workspaceID: 1)
+        }
+    }
 }
 
 @MainActor
@@ -645,6 +792,22 @@ private final class KeychainStoreStub: KeychainStoring {
     func removeValue(for key: KeychainKey) {
         values.removeValue(forKey: key)
     }
+}
+
+private func expectedExportFilename(
+    format: AppStorageExportFormat,
+    day: Date
+) -> String {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = TestSupport.timeZone
+    let components = calendar.dateComponents([.year, .month, .day], from: day)
+    let localDay = String(
+        format: "%04d-%02d-%02d",
+        components.year ?? 0,
+        components.month ?? 0,
+        components.day ?? 0
+    )
+    return "\(AppConfiguration.exportFilenamePrefix)-\(format.rawValue)-\(localDay)-\(localDay).json"
 }
 
 private struct LLMServiceStub: LLMServicing, AppleIntelligenceAvailabilityChecking {
