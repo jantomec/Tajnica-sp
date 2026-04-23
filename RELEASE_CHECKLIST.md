@@ -18,6 +18,9 @@ Treat this file as locked once release review starts. Any exception should be do
 - [ ] `Automated`: remove remaining legacy `Planner` user-facing copy from intents, dialogs, exports, tests, and docs.
 - [x] `Decision`: keep the legacy technical identifiers intentionally unchanged for storage continuity:
   `JanTomec.Planner`, `planner://`, and `iCloud.com.jantomec.planner`.
+- [x] `Decision`: Debug and Release use different `PRODUCT_BUNDLE_IDENTIFIER` values intentionally — Debug
+  builds use `com.jantomec.planner` for local development, and Release ships as `JanTomec.Planner` to
+  preserve storage continuity with the original distribution. Do not unify them.
 - [x] `Manual`: resolve the macOS build warning about `UIBackgroundModes` containing `remote-notification` by scoping it to iOS SDK builds only.
 - [ ] `Ops`: define release smoke-test credentials and safe test workspaces/accounts for Gemini, Claude, OpenAI, Toggl, Clockify, and Harvest. Official docs review did not confirm dedicated sandbox/test endpoints, so plan on approved non-production accounts or workspaces.
 - [ ] `Manual`: complete a final multi-device smoke pass on macOS, iPhone, and iPad before release.
@@ -26,7 +29,8 @@ Treat this file as locked once release review starts. Any exception should be do
 
 - [ ] `Automated`: all user-facing copy uses `Tajnica s.p.` or neutral wording instead of `Planner`.
 - [ ] `Manual`: app icon, app name, accent color, and screenshots match the release brand.
-- [x] `Decision`: keep the bundle identifier to preserve storage continuity and existing integrations.
+- [x] `Decision`: keep the Release bundle identifier `JanTomec.Planner` to preserve storage continuity and
+  existing integrations; Debug intentionally uses `com.jantomec.planner` and the divergence is expected.
 - [x] `Decision`: keep the deep-link URL scheme to preserve legacy automation and existing links.
 - [x] `Decision`: keep the CloudKit container identifier to preserve existing synced storage continuity.
 - [ ] `Manual`: `CFBundleDisplayName`, signing assets, entitlements, and exported artifacts match the intended release identity.

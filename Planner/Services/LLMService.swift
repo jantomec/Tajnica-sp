@@ -40,23 +40,6 @@ struct LLMServiceRouter {
         self.openAIService = openAIService
     }
 
-    init(
-        appleFoundationService: LLMServicing,
-        geminiService: LLMServicing,
-        claudeService: LLMServicing,
-        openAIService: LLMServicing
-    ) {
-        guard let availabilityChecker = appleFoundationService as? AppleIntelligenceAvailabilityChecking else {
-            preconditionFailure("appleFoundationService must support Apple Intelligence availability checks.")
-        }
-
-        self.appleFoundationService = appleFoundationService
-        self.appleIntelligenceAvailabilityChecker = availabilityChecker
-        self.geminiService = geminiService
-        self.claudeService = claudeService
-        self.openAIService = openAIService
-    }
-
     func service(for provider: LLMProvider) -> LLMServicing {
         switch provider {
         case .appleFoundation: appleFoundationService

@@ -475,7 +475,7 @@ private enum EntryEditorPreviewData {
         TogglWorkspaceCatalog(
             workspace: WorkspaceSummary(id: 101, name: "Client Work"),
             projects: [
-                ProjectSummary(id: 1_001, name: "Planner macOS", workspaceId: 101),
+                ProjectSummary(id: 1_001, name: "Tajnica s.p. macOS", workspaceId: 101),
                 ProjectSummary(id: 1_002, name: "Admin", workspaceId: 101)
             ]
         ),
@@ -491,7 +491,7 @@ private enum EntryEditorPreviewData {
         ClockifyWorkspaceCatalog(
             workspace: ClockifyWorkspaceSummary(id: "clockify-client", name: "Client Workspace"),
             projects: [
-                ClockifyProjectSummary(id: "clockify-planner", name: "Planner Refresh", workspaceId: "clockify-client"),
+                ClockifyProjectSummary(id: "clockify-planner", name: "Tajnica s.p. Refresh", workspaceId: "clockify-client"),
                 ClockifyProjectSummary(id: "clockify-support", name: "Support", workspaceId: "clockify-client")
             ]
         ),
@@ -509,7 +509,7 @@ private enum EntryEditorPreviewData {
             projects: [
                 HarvestProjectSummary(
                     id: 2_001,
-                    name: "Planner Product",
+                    name: "Tajnica s.p. Product",
                     taskAssignments: [
                         HarvestTaskSummary(id: 3_001, name: "Feature Development"),
                         HarvestTaskSummary(id: 3_002, name: "Bugfixing")
@@ -547,19 +547,19 @@ private enum EntryEditorPreviewData {
             togglTarget: CandidateTimeEntry.TogglTarget(
                 workspaceName: "Client Work",
                 workspaceId: 101,
-                projectName: "Planner macOS",
+                projectName: "Tajnica s.p. macOS",
                 projectId: 1_001
             ),
             clockifyTarget: CandidateTimeEntry.ClockifyTarget(
                 workspaceName: "Client Workspace",
                 workspaceId: "clockify-client",
-                projectName: "Planner Refresh",
+                projectName: "Tajnica s.p. Refresh",
                 projectId: "clockify-planner"
             ),
             harvestTarget: CandidateTimeEntry.HarvestTarget(
                 accountName: "Acme Studio",
                 accountId: 201,
-                projectName: "Planner Product",
+                projectName: "Tajnica s.p. Product",
                 projectId: 2_001,
                 taskName: "Feature Development",
                 taskId: 3_001

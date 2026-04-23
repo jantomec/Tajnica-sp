@@ -393,7 +393,7 @@ private func diaryPreviewDraft(for record: DiaryPromptRecord, in timeZone: TimeZ
                 harvestTarget: CandidateTimeEntry.HarvestTarget(
                     accountName: "Acme Studio",
                     accountId: 201,
-                    projectName: "Planner Product",
+                    projectName: "Tajnica s.p. Product",
                     projectId: 2_001,
                     taskName: "Feature Development",
                     taskId: 3_001
@@ -426,7 +426,7 @@ private func diaryPreviewStoredEntries(
                 togglTarget: CandidateTimeEntry.TogglTarget(
                     workspaceName: "Client Work",
                     workspaceId: 101,
-                    projectName: "Planner macOS",
+                    projectName: "Tajnica s.p. macOS",
                     projectId: 1_001
                 ),
                 tags: ["team", "planning"],
