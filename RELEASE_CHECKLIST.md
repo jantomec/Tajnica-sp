@@ -64,7 +64,7 @@ Treat this file as locked once release review starts. Any exception should be do
 - [x] `Automated`: Claude connection test, extraction, and fallback behavior are covered.
 - [x] `Automated`: OpenAI connection test, extraction, and fallback behavior are covered.
 - [x] `Automated`: shared retry policy honors Retry-After, exponential backoff with jitter, and the full list of retryable status codes across every cloud provider.
-- [ ] `Automated`: "Polish with AI" works and reports useful failures.
+- [x] `Automated`: "Polish with AI" works and reports useful failures. Covered by `DiaryFeatureTests.polishUserContextUpdatesContextAndReportsSuccess`, `…FallsBackToAppleIntelligenceWhenPrimaryFails`, `…ReportsConfigurationErrorWhenNoProviderAvailable`, `…RejectsBlankInput`, and `…SurfacesServiceErrorWhenFallbackUnavailable`, which exercise primary success, Apple fallback, missing-provider guard, blank-input guard, and surfaced service-error paths through `PlannerAppModel.polishUserContext()`.
 - [ ] `Manual`: real provider smoke tests succeed with release credentials and acceptable latency/cost. Partial coverage: `PlannerTests/SmokeTests.swift` exercises Gemini connection and extraction live against the scheme-provided credentials; Claude and OpenAI still manual until their keys are provisioned.
 - [ ] `Ops`: quotas, billing alerts, and key rotation procedures are defined for every enabled provider.
 - [ ] `Decision`: confirm which providers are officially supported in release copy and support docs.

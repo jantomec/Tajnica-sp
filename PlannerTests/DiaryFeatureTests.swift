@@ -170,6 +170,115 @@ struct DiaryFeatureTests {
 
     @MainActor
     @Test
+    func polishUserContextUpdatesContextAndReportsSuccess() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let geminiService = LLMServiceStub(
+            response: LLMServiceStub.defaultResponse,
+            polishedText: "Polished output"
+        )
+
+        let model = context.makeAppModel(geminiService: geminiService)
+        model.userContext = "raw context"
+
+        await model.polishUserContext()
+
+        #expect(model.userContext == "Polished output")
+        #expect(model.polishResult?.isError == false)
+        #expect(model.polishResult?.message == "Polished successfully.")
+        #expect(model.isPolishingContext == false)
+    }
+
+    @MainActor
+    @Test
+    func polishUserContextFallsBackToAppleIntelligenceWhenPrimaryFails() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let appleService = LLMServiceStub(
+            response: LLMServiceStub.defaultResponse,
+            polishedText: "Apple-polished output"
+        )
+        let geminiService = LLMServiceStub(
+            response: LLMServiceStub.defaultResponse,
+            polishError: PlannerServiceError.api(statusCode: 503, message: "Service unavailable")
+        )
+
+        let model = context.makeAppModel(
+            appleService: appleService,
+            geminiService: geminiService
+        )
+        model.userContext = "raw context"
+
+        await model.polishUserContext()
+
+        #expect(model.userContext == "Apple-polished output")
+        #expect(model.polishResult?.isError == false)
+        #expect(
+            model.polishResult?.message
+                == "Polished successfully with Apple Intelligence fallback."
+        )
+    }
+
+    @MainActor
+    @Test
+    func polishUserContextReportsConfigurationErrorWhenNoProviderAvailable() async {
+        let context = TestContext(provider: .disabled, appleIntelligenceEnabled: false)
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(geminiAPIKey: nil)
+        model.userContext = "raw context"
+
+        await model.polishUserContext()
+
+        #expect(model.userContext == "raw context")
+        #expect(model.polishResult?.isError == true)
+        #expect(
+            model.polishResult?.message
+                == "Enable Apple Intelligence or choose a cloud AI provider in Settings before continuing."
+        )
+    }
+
+    @MainActor
+    @Test
+    func polishUserContextRejectsBlankInput() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+        model.userContext = ""
+
+        await model.polishUserContext()
+
+        #expect(model.userContext == "")
+        #expect(model.polishResult?.isError == true)
+        #expect(model.polishResult?.message == "Write something about yourself first.")
+    }
+
+    @MainActor
+    @Test
+    func polishUserContextSurfacesServiceErrorWhenFallbackUnavailable() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let geminiService = LLMServiceStub(
+            response: LLMServiceStub.defaultResponse,
+            polishError: PlannerServiceError.missingCredential("Gemini API key")
+        )
+
+        let model = context.makeAppModel(geminiService: geminiService)
+        model.userContext = "raw context"
+
+        await model.polishUserContext()
+
+        #expect(model.userContext == "raw context")
+        #expect(model.polishResult?.isError == true)
+        #expect(model.polishResult?.message == "Gemini API key is missing.")
+    }
+
+    @MainActor
+    @Test
     func clearDraftKeepsArchivedPrompts() async {
         let context = TestContext()
         defer { context.cleanup() }
