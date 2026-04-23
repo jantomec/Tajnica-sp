@@ -47,6 +47,49 @@ struct ReleaseReadinessTests {
     }
 
     @Test
+    func repositoryDocsUseReleaseNameAndDescribeCurrentFeatureSet() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+
+        let readme = try String(contentsOf: repoRoot.appendingPathComponent("README.md"), encoding: .utf8)
+        let privacyPolicy = try String(
+            contentsOf: repoRoot.appendingPathComponent("PRIVACY_POLICY.md"),
+            encoding: .utf8
+        )
+
+        let readmeHeading: Comment = "README must lead with a release-branded H1."
+        #expect(readme.hasPrefix("# \(AppConfiguration.displayName)"), readmeHeading)
+
+        let privacyHeading: Comment = "Privacy policy must lead with the release-branded heading."
+        #expect(privacyPolicy.hasPrefix("# Privacy Policy for \(AppConfiguration.displayName)"), privacyHeading)
+
+        // The README should continuously describe the shipped feature surface. If any of these
+        // topic keywords drops out, the doc is drifting from the current feature set.
+        let requiredTerms: [String] = [
+            "Apple Intelligence",
+            "Apple Foundation Models",
+            "Gemini",
+            "Claude",
+            "ChatGPT",
+            "Toggl",
+            "Clockify",
+            "Harvest",
+            "Capture",
+            "Review",
+            "Diary",
+            "Settings",
+            "Export",
+            "Keychain",
+            "iCloud"
+        ]
+        for term in requiredTerms {
+            let message: Comment = "README must describe the current feature set by referencing \(term)."
+            #expect(readme.contains(term), message)
+        }
+    }
+
+    @Test
     func intentSourceFilesDoNotLeakLegacyBrand() throws {
         let repoRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()

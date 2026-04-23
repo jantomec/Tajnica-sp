@@ -137,7 +137,7 @@ Treat this file as locked once release review starts. Any exception should be do
 
 ## Documentation And Support
 
-- [ ] `Automated`: repository docs use the release name and describe the current feature set accurately.
+- [x] `Automated`: repository docs use the release name and describe the current feature set accurately. Covered by `ReleaseReadinessTests.repositoryDocsUseReleaseNameAndDescribeCurrentFeatureSet`, which asserts that `README.md` leads with `# Tajnica s.p.`, that `PRIVACY_POLICY.md` leads with `# Privacy Policy for Tajnica s.p.`, and that the README names every shipped AI provider (Apple Intelligence, Apple Foundation Models, Gemini, Claude, ChatGPT), every tracker (Toggl, Clockify, Harvest), every primary surface (Capture, Review, Diary, Settings, Export), and the Keychain + iCloud storage story.
 - [ ] `Manual`: setup instructions, privacy policy, known limitations, and support contacts are current.
 - [ ] `Ops`: create a short release status report with blockers, accepted risks, and post-release watch items.
 
