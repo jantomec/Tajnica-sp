@@ -798,6 +798,192 @@ struct DiaryFeatureTests {
             _ = try await facade.assignTogglWorkspace(entryID: entryID, workspaceID: 1)
         }
     }
+
+    // MARK: - Empty Credential Guardrails
+
+    @MainActor
+    @Test
+    func emptyCredentialsBlockConnectionTestsWithGuardrailMessages() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+
+        #expect(model.configuredExternalTimeTrackers.isEmpty)
+        #expect(model.hasStoredCredential(for: .toggl) == false)
+        #expect(model.hasStoredCredential(for: .clockify) == false)
+        #expect(model.hasStoredCredential(for: .harvest) == false)
+
+        await model.testTogglConnection()
+        #expect(model.togglTestResult == PlannerAppModel.InlineResult(
+            message: "Enter a Toggl API token first.",
+            isError: true
+        ))
+        #expect(model.isTestingToggl == false)
+
+        await model.testClockifyConnection()
+        #expect(model.clockifyTestResult == PlannerAppModel.InlineResult(
+            message: "Enter a Clockify API key first.",
+            isError: true
+        ))
+        #expect(model.isTestingClockify == false)
+
+        await model.testHarvestConnection()
+        #expect(model.harvestTestResult == PlannerAppModel.InlineResult(
+            message: "Enter a Harvest access token first.",
+            isError: true
+        ))
+        #expect(model.isTestingHarvest == false)
+    }
+
+    @MainActor
+    @Test
+    func whitespaceOnlyCredentialsAreTreatedAsMissing() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+        model.updateTogglAPIToken("   ")
+        model.updateClockifyAPIToken("\t\n")
+        model.updateHarvestAccessToken("  \n  ")
+
+        #expect(model.hasStoredCredential(for: .toggl) == false)
+        #expect(model.hasStoredCredential(for: .clockify) == false)
+        #expect(model.hasStoredCredential(for: .harvest) == false)
+        #expect(model.configuredExternalTimeTrackers.isEmpty)
+
+        await model.testTogglConnection()
+        await model.testClockifyConnection()
+        await model.testHarvestConnection()
+
+        #expect(model.togglTestResult?.isError == true)
+        #expect(model.togglTestResult?.message == "Enter a Toggl API token first.")
+        #expect(model.clockifyTestResult?.isError == true)
+        #expect(model.clockifyTestResult?.message == "Enter a Clockify API key first.")
+        #expect(model.harvestTestResult?.isError == true)
+        #expect(model.harvestTestResult?.message == "Enter a Harvest access token first.")
+    }
+
+    @MainActor
+    @Test
+    func submitEntriesSkipsTrackersWithoutCredentialsAndOnlyReportsAppStorage() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+        model.updateRawText("Internal planning")
+
+        await model.processNote()
+        await model.submitEntries()
+
+        #expect(model.reviewErrorMessage == nil)
+        #expect(model.captureStatusMessage == "Saved 1 entries to \(AppConfiguration.displayName) Storage.")
+        #expect(
+            model.submissionDestinationSummary
+                == "Submitted entries are always saved in \(AppConfiguration.displayName) Storage. No external tracker is currently connected."
+        )
+    }
+
+    @MainActor
+    @Test
+    func refreshTimeTrackerConnectionsOnViewLoadSkipsWhenNoCredentialsStored() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+
+        await model.refreshTimeTrackerConnectionsOnViewLoad()
+
+        #expect(model.togglTestResult == nil)
+        #expect(model.clockifyTestResult == nil)
+        #expect(model.harvestTestResult == nil)
+        #expect(model.isTestingToggl == false)
+        #expect(model.isTestingClockify == false)
+        #expect(model.isTestingHarvest == false)
+        #expect(model.togglWorkspaceCatalogs.isEmpty)
+        #expect(model.clockifyWorkspaceCatalogs.isEmpty)
+        #expect(model.harvestAccountCatalogs.isEmpty)
+    }
+
+    @MainActor
+    @Test
+    func disconnectingTimeTrackerClearsTokenCatalogsAndTestResult() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel(
+            togglToken: "toggl-token",
+            clockifyToken: "clockify-token",
+            harvestToken: "harvest-token"
+        )
+
+        await model.testTogglConnection()
+        await model.testClockifyConnection()
+        await model.testHarvestConnection()
+
+        #expect(model.togglTestResult?.isError == false)
+        #expect(model.clockifyTestResult?.isError == false)
+        #expect(model.harvestTestResult?.isError == false)
+        #expect(!model.togglWorkspaceCatalogs.isEmpty)
+        #expect(!model.clockifyWorkspaceCatalogs.isEmpty)
+        #expect(!model.harvestAccountCatalogs.isEmpty)
+
+        model.disconnectTimeTracker(.toggl)
+        model.disconnectTimeTracker(.clockify)
+        model.disconnectTimeTracker(.harvest)
+
+        #expect(model.hasStoredCredential(for: .toggl) == false)
+        #expect(model.hasStoredCredential(for: .clockify) == false)
+        #expect(model.hasStoredCredential(for: .harvest) == false)
+        #expect(model.togglTestResult == nil)
+        #expect(model.clockifyTestResult == nil)
+        #expect(model.harvestTestResult == nil)
+        #expect(model.togglWorkspaceCatalogs.isEmpty)
+        #expect(model.clockifyWorkspaceCatalogs.isEmpty)
+        #expect(model.harvestAccountCatalogs.isEmpty)
+    }
+
+    @MainActor
+    @Test
+    func intentFacadeReportsUnconfiguredClockifyWhenAssigningWorkspace() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+        let facade = PlannerIntentFacade(appModel: model, startsModelOnUse: true)
+        let start = TestSupport.localDate(on: context.day, hour: 9, minute: 0)
+        let stop = TestSupport.localDate(on: context.day, hour: 10, minute: 0)
+        model.addDraftEntry(description: "Bug fixing", start: start, stop: stop)
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+
+        await #expect(
+            throws: PlannerIntentError(message: "Clockify is not connected in \(AppConfiguration.displayName)")
+        ) {
+            _ = try await facade.assignClockifyWorkspace(entryID: entryID, workspaceID: "workspace-1")
+        }
+    }
+
+    @MainActor
+    @Test
+    func intentFacadeReportsUnconfiguredHarvestWhenAssigningTask() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+        let facade = PlannerIntentFacade(appModel: model, startsModelOnUse: true)
+        let start = TestSupport.localDate(on: context.day, hour: 9, minute: 0)
+        let stop = TestSupport.localDate(on: context.day, hour: 10, minute: 0)
+        model.addDraftEntry(description: "Bug fixing", start: start, stop: stop)
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+
+        await #expect(
+            throws: PlannerIntentError(message: "Harvest is not connected in \(AppConfiguration.displayName)")
+        ) {
+            _ = try await facade.assignHarvestTask(entryID: entryID, accountID: 7, projectID: 12, taskID: 18)
+        }
+    }
 }
 
 @MainActor

@@ -71,7 +71,7 @@ Treat this file as locked once release review starts. Any exception should be do
 
 ## Time Tracker Integrations
 
-- [ ] `Automated`: empty credential states show clear guardrails for Toggl, Clockify, and Harvest.
+- [x] `Automated`: empty credential states show clear guardrails for Toggl, Clockify, and Harvest. Covered by `DiaryFeatureTests.emptyCredentialsBlockConnectionTestsWithGuardrailMessages`, `…whitespaceOnlyCredentialsAreTreatedAsMissing`, `…submitEntriesSkipsTrackersWithoutCredentialsAndOnlyReportsAppStorage`, `…refreshTimeTrackerConnectionsOnViewLoadSkipsWhenNoCredentialsStored`, `…disconnectingTimeTrackerClearsTokenCatalogsAndTestResult`, `…intentFacadeReportsUnconfiguredClockifyWhenAssigningWorkspace`, and `…intentFacadeReportsUnconfiguredHarvestWhenAssigningTask`, which verify the connection-test guardrail copy, whitespace-only token rejection, per-provider submit skipping, view-load retest skipping, disconnect cleanup, and Clockify/Harvest intent-level "is not connected" errors (Toggl was already covered).
 - [x] `Automated`: stored credentials are retested on settings load.
 - [ ] `Automated`: successful connection tests fetch reference data and persist usable selections where supported.
 - [x] `Automated`: submit can save locally and push to every enabled external tracker combination that is represented in automated tests.
@@ -103,7 +103,7 @@ Treat this file as locked once release review starts. Any exception should be do
 ## Shortcuts, Siri, And Deep Links
 
 - [x] `Automated`: intent facade responses do not leak the legacy product name.
-- [ ] `Automated`: shortcut phrases and user-facing intent copy match the release brand.
+- [x] `Automated`: shortcut phrases and user-facing intent copy match the release brand. Covered by `ReleaseReadinessTests.shortcutPhrasesUseApplicationNamePlaceholder`, which parses every `phrases: [ ... ]` block in `PlannerShortcutsProvider.swift` and asserts each phrase uses the `\(.applicationName)` token (so Siri substitutes the `CFBundleDisplayName`-provided release brand) and contains no hard-coded `Planner` or `Tajnica` literal; and by `ReleaseReadinessTests.intentSourceFilesDoNotLeakLegacyBrand`, which runs a scope-tightened version of the Swift-literal scan against `Planner/Intents/` with no allowlist so any legacy-brand leak in intent titles, descriptions, dialogs, or facade copy fails the gate (back-stopped by `appSourcesDoNotLeakLegacyPlannerIntoStringLiterals`).
 - [ ] `Manual`: shortcuts register on first launch and appear in the Shortcuts app.
 - [ ] `Manual`: Siri can open Capture and Review on a real iPhone.
 - [ ] `Manual`: background shortcuts for appending, creating, processing, and submitting drafts work on device.

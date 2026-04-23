@@ -19,6 +19,57 @@ struct ReleaseReadinessTests {
     }
 
     @Test
+    func shortcutPhrasesUseApplicationNamePlaceholder() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let providerURL = repoRoot
+            .appendingPathComponent("Planner")
+            .appendingPathComponent("Intents")
+            .appendingPathComponent("PlannerShortcutsProvider.swift")
+        let source = try String(contentsOf: providerURL, encoding: .utf8)
+
+        let phrases = Self.extractShortcutPhrases(from: source)
+
+        let enoughPhrases: Comment = "Expected to find shortcut phrases in PlannerShortcutsProvider.swift."
+        #expect(phrases.count >= 10, enoughPhrases)
+
+        for phrase in phrases {
+            let placeholderMessage: Comment = "Shortcut phrase should use the \\(.applicationName) placeholder so Siri substitutes the release brand automatically, got: \"\(phrase)\""
+            #expect(phrase.contains(#"\(.applicationName)"#), placeholderMessage)
+
+            let legacyMessage: Comment = "Shortcut phrase must not reference the legacy Planner name: \"\(phrase)\""
+            #expect(!phrase.contains("Planner"), legacyMessage)
+
+            let hardcodedMessage: Comment = "Shortcut phrase should defer to \\(.applicationName) rather than hard-coding the brand: \"\(phrase)\""
+            #expect(!phrase.contains("Tajnica"), hardcodedMessage)
+        }
+    }
+
+    @Test
+    func intentSourceFilesDoNotLeakLegacyBrand() throws {
+        let repoRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let intentsRoot = repoRoot
+            .appendingPathComponent("Planner")
+            .appendingPathComponent("Intents")
+
+        var violations: [String] = []
+        for file in try swiftFiles(under: intentsRoot) {
+            let contents = try String(contentsOf: file, encoding: .utf8)
+            for (index, line) in contents.components(separatedBy: "\n").enumerated() {
+                guard stringLiteralsContainPlanner(in: line) else { continue }
+                let relative = file.path.replacingOccurrences(of: repoRoot.path + "/", with: "")
+                violations.append("\(relative):\(index + 1): \(line.trimmingCharacters(in: .whitespaces))")
+            }
+        }
+
+        let message: Comment = "Legacy Planner copy in Siri/Shortcuts intent sources:\n\(violations.joined(separator: "\n"))"
+        #expect(violations.isEmpty, message)
+    }
+
+    @Test
     func appSourcesDoNotLeakLegacyPlannerIntoStringLiterals() throws {
         let repoRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -47,6 +98,27 @@ struct ReleaseReadinessTests {
 
         let message: Comment = "Legacy Planner copy in user-facing sources:\n\(violations.joined(separator: "\n"))"
         #expect(violations.isEmpty, message)
+    }
+
+    private static func extractShortcutPhrases(from source: String) -> [String] {
+        let blockPattern = try! NSRegularExpression(
+            pattern: #"phrases:\s*\[(.*?)\]"#,
+            options: [.dotMatchesLineSeparators]
+        )
+        let literalPattern = try! NSRegularExpression(pattern: #""([^"]*)""#)
+
+        var phrases: [String] = []
+        let sourceRange = NSRange(source.startIndex..., in: source)
+        for blockMatch in blockPattern.matches(in: source, range: sourceRange) {
+            guard let blockRange = Range(blockMatch.range(at: 1), in: source) else { continue }
+            let block = String(source[blockRange])
+            let blockNSRange = NSRange(block.startIndex..., in: block)
+            for literalMatch in literalPattern.matches(in: block, range: blockNSRange) {
+                guard let literalRange = Range(literalMatch.range(at: 1), in: block) else { continue }
+                phrases.append(String(block[literalRange]))
+            }
+        }
+        return phrases
     }
 
     private func swiftFiles(under url: URL) throws -> [URL] {
