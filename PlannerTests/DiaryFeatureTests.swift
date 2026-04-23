@@ -1137,6 +1137,48 @@ struct DiaryFeatureTests {
         #expect(model.draft.candidateEntries.isEmpty == false)
         #expect(model.captureStatusMessage?.hasPrefix("Saved ") == false)
     }
+
+    // MARK: - Secrets Storage
+
+    @MainActor
+    @Test
+    func secretsAreStoredInKeychainAndNotInUserDefaults() async {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        // Build the model with no seeded secrets so we can observe each setter in isolation.
+        let model = context.makeAppModel(geminiAPIKey: nil)
+
+        let secretCases: [(key: KeychainKey, apply: (String) -> Void)] = [
+            (.geminiAPIKey, { model.updateAPIKey($0, for: .gemini) }),
+            (.claudeAPIKey, { model.updateAPIKey($0, for: .claude) }),
+            (.openAIAPIKey, { model.updateAPIKey($0, for: .openAI) }),
+            (.togglAPIToken, { model.updateTogglAPIToken($0) }),
+            (.clockifyAPIToken, { model.updateClockifyAPIToken($0) }),
+            (.harvestAccessToken, { model.updateHarvestAccessToken($0) })
+        ]
+
+        for (key, apply) in secretCases {
+            let secret = "SECRET-\(key.rawValue)-\(UUID().uuidString)"
+            apply(secret)
+
+            #expect(context.keychainStore.string(for: key) == secret)
+
+            let defaultsSnapshot = context.userDefaults.dictionaryRepresentation()
+            for (defaultsKey, defaultsValue) in defaultsSnapshot {
+                if let stringValue = defaultsValue as? String {
+                    #expect(
+                        stringValue != secret,
+                        "Secret for \(key.rawValue) leaked into UserDefaults at key '\(defaultsKey)'."
+                    )
+                }
+                #expect(
+                    defaultsKey != key.rawValue,
+                    "UserDefaults must not carry a key named \(key.rawValue); that namespace is reserved for Keychain."
+                )
+            }
+        }
+    }
 }
 
 @MainActor
@@ -1145,6 +1187,7 @@ private struct TestContext {
     let day = TestSupport.selectedDay()
     let preferencesStore: PreferencesStore
     let persistenceController: PlannerPersistenceController
+    let keychainStore: KeychainStoreStub
 
     init(provider: LLMProvider = .gemini, appleIntelligenceEnabled: Bool = true) {
         let defaults = UserDefaults(suiteName: applicationName)!
@@ -1155,6 +1198,11 @@ private struct TestContext {
         preferencesStore.isAppleIntelligenceEnabled = appleIntelligenceEnabled
         self.preferencesStore = preferencesStore
         self.persistenceController = try! PlannerPersistenceController.inMemory()
+        self.keychainStore = KeychainStoreStub()
+    }
+
+    var userDefaults: UserDefaults {
+        UserDefaults(suiteName: applicationName)!
     }
 
     func makeAppModel(
@@ -1172,27 +1220,24 @@ private struct TestContext {
         clockifyService: ClockifyServiceStub = ClockifyServiceStub(),
         harvestService: HarvestServiceStub = HarvestServiceStub()
     ) -> PlannerAppModel {
-        var keychainValues: [KeychainKey: String] = [:]
         if let geminiAPIKey {
-            keychainValues[.geminiAPIKey] = geminiAPIKey
+            keychainStore.set(geminiAPIKey, for: .geminiAPIKey)
         }
         if let claudeAPIKey {
-            keychainValues[.claudeAPIKey] = claudeAPIKey
+            keychainStore.set(claudeAPIKey, for: .claudeAPIKey)
         }
         if let openAIAPIKey {
-            keychainValues[.openAIAPIKey] = openAIAPIKey
+            keychainStore.set(openAIAPIKey, for: .openAIAPIKey)
         }
         if !togglToken.isEmpty {
-            keychainValues[.togglAPIToken] = togglToken
+            keychainStore.set(togglToken, for: .togglAPIToken)
         }
         if !clockifyToken.isEmpty {
-            keychainValues[.clockifyAPIToken] = clockifyToken
+            keychainStore.set(clockifyToken, for: .clockifyAPIToken)
         }
         if !harvestToken.isEmpty {
-            keychainValues[.harvestAccessToken] = harvestToken
+            keychainStore.set(harvestToken, for: .harvestAccessToken)
         }
-
-        let keychainStore = KeychainStoreStub(values: keychainValues)
 
         return PlannerAppModel(
             preferencesStore: preferencesStore,

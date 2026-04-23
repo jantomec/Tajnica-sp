@@ -120,7 +120,7 @@ Treat this file as locked once release review starts. Any exception should be do
 
 ## Security, Privacy, And Compliance
 
-- [ ] `Automated`: secrets are stored in Keychain, not plain `UserDefaults`.
+- [x] `Automated`: secrets are stored in Keychain, not plain `UserDefaults`. Covered by `DiaryFeatureTests.secretsAreStoredInKeychainAndNotInUserDefaults`, which walks every `KeychainKey` (Gemini, Claude, OpenAI, Toggl, Clockify, Harvest) through its `PlannerAppModel` setter with a unique random secret and asserts the value lands in the keychain stub, the UserDefaults suite contains no entry with that secret value, and no UserDefaults key is named after a `KeychainKey` raw value.
 - [x] `Automated`: non-secret preferences persist correctly across launches.
 - [ ] `Manual`: privacy policy matches actual data flows, especially for LLM providers, tracker APIs, and iCloud sync.
 - [ ] `Manual`: third-party licenses, notices, and disclosures are complete.
