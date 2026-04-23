@@ -1046,6 +1046,97 @@ struct DiaryFeatureTests {
         #expect(context.preferencesStore.selectedHarvestProjectID == nil)
         #expect(context.preferencesStore.selectedHarvestTaskID == nil)
     }
+
+    // MARK: - Partial Submission Failures
+
+    @MainActor
+    @Test
+    func partialSubmissionFailurePreservesLocalStorageAndReportsFailingProvider() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let togglService = TogglServiceStub(
+            createError: PlannerServiceError.emptyResponse("Toggl rejected the request.")
+        )
+        let model = context.makeAppModel(
+            togglToken: "toggl-token",
+            clockifyToken: "clockify-token",
+            harvestToken: "harvest-token",
+            togglService: togglService
+        )
+        model.updateRawText("Client implementation")
+
+        await model.processNote()
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+        model.setHarvestAssignment(id: entryID, accountID: 7, projectID: 12, taskID: 18)
+
+        await model.submitEntries()
+
+        let snapshot = try context.persistenceController.repository.loadSnapshot(currentDay: context.day)
+        #expect(snapshot.storedEntries.count == 1)
+        #expect(model.storedEntries.count == 1)
+
+        #expect(model.reviewErrorMessage?.contains("Toggl") == true)
+        #expect(model.reviewErrorMessage?.contains("Toggl rejected the request.") == true)
+
+        #expect(model.reviewStatusMessage?.contains("Clockify") == true)
+        #expect(model.reviewStatusMessage?.contains("Harvest") == true)
+        #expect(model.reviewStatusMessage?.contains("\(AppConfiguration.displayName) Storage") == true)
+        #expect(model.reviewStatusMessage?.contains("Toggl") == false)
+
+        #expect(model.draft.candidateEntries.isEmpty == false)
+        // Submit's success branch writes a "Saved N entries to … Storage." capture message; the failure
+        // branch must not. Anything else (for example the processNote success message) is fine.
+        #expect(model.captureStatusMessage?.hasPrefix("Saved ") == false)
+    }
+
+    @MainActor
+    @Test
+    func allExternalSubmissionsFailingStillPreservesLocalStorage() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let togglService = TogglServiceStub(
+            createError: PlannerServiceError.emptyResponse("Toggl rejected the request.")
+        )
+        let clockifyService = ClockifyServiceStub(
+            createError: PlannerServiceError.emptyResponse("Clockify rejected the request.")
+        )
+        let harvestService = HarvestServiceStub(
+            createError: PlannerServiceError.emptyResponse("Harvest rejected the request.")
+        )
+        let model = context.makeAppModel(
+            togglToken: "toggl-token",
+            clockifyToken: "clockify-token",
+            harvestToken: "harvest-token",
+            togglService: togglService,
+            clockifyService: clockifyService,
+            harvestService: harvestService
+        )
+        model.updateRawText("Client implementation")
+
+        await model.processNote()
+
+        let entryID = try #require(model.draft.candidateEntries.first?.id)
+        model.setHarvestAssignment(id: entryID, accountID: 7, projectID: 12, taskID: 18)
+
+        await model.submitEntries()
+
+        let snapshot = try context.persistenceController.repository.loadSnapshot(currentDay: context.day)
+        #expect(snapshot.storedEntries.count == 1)
+        #expect(model.storedEntries.count == 1)
+
+        let errorMessage = try #require(model.reviewErrorMessage)
+        #expect(errorMessage.contains("Toggl"))
+        #expect(errorMessage.contains("Clockify"))
+        #expect(errorMessage.contains("Harvest"))
+
+        // Even when every external push failed, the status line still records that app storage succeeded.
+        #expect(model.reviewStatusMessage?.contains("\(AppConfiguration.displayName) Storage") == true)
+        #expect(model.draft.candidateEntries.isEmpty == false)
+        #expect(model.captureStatusMessage?.hasPrefix("Saved ") == false)
+    }
 }
 
 @MainActor
@@ -1076,7 +1167,10 @@ private struct TestContext {
         appleService: LLMServiceStub = LLMServiceStub(response: LLMServiceStub.defaultResponse),
         geminiService: LLMServiceStub = LLMServiceStub(response: LLMServiceStub.defaultResponse),
         claudeService: LLMServiceStub = LLMServiceStub(response: LLMServiceStub.defaultResponse),
-        openAIService: LLMServiceStub = LLMServiceStub(response: LLMServiceStub.defaultResponse)
+        openAIService: LLMServiceStub = LLMServiceStub(response: LLMServiceStub.defaultResponse),
+        togglService: TogglServiceStub = TogglServiceStub(),
+        clockifyService: ClockifyServiceStub = ClockifyServiceStub(),
+        harvestService: HarvestServiceStub = HarvestServiceStub()
     ) -> PlannerAppModel {
         var keychainValues: [KeychainKey: String] = [:]
         if let geminiAPIKey {
@@ -1099,9 +1193,6 @@ private struct TestContext {
         }
 
         let keychainStore = KeychainStoreStub(values: keychainValues)
-        let togglService = TogglServiceStub()
-        let clockifyService = ClockifyServiceStub()
-        let harvestService = HarvestServiceStub()
 
         return PlannerAppModel(
             preferencesStore: preferencesStore,
@@ -1233,6 +1324,8 @@ private struct LLMServiceStub: LLMServicing, AppleIntelligenceAvailabilityChecki
 }
 
 private struct TogglServiceStub: TogglServicing {
+    var createError: Error?
+
     func fetchCurrentUser(apiToken: String) async throws -> TogglCurrentUserDTO {
         TogglCurrentUserDTO(id: 1, fullname: "Test User", email: "user@example.com")
     }
@@ -1249,13 +1342,16 @@ private struct TogglServiceStub: TogglServicing {
         _ submissions: [StoredTimeEntryRecord.TogglSubmission],
         apiToken: String
     ) async throws -> [TogglCreatedTimeEntryDTO] {
-        submissions.enumerated().map { index, submission in
+        if let createError { throw createError }
+        return submissions.enumerated().map { index, submission in
             TogglCreatedTimeEntryDTO(id: index + 1, description: submission.request.description)
         }
     }
 }
 
 private struct ClockifyServiceStub: ClockifyServicing {
+    var createError: Error?
+
     func fetchCurrentUser(apiKey: String) async throws -> ClockifyCurrentUserDTO {
         ClockifyCurrentUserDTO(
             id: "1",
@@ -1278,13 +1374,16 @@ private struct ClockifyServiceStub: ClockifyServicing {
         _ submissions: [StoredTimeEntryRecord.ClockifySubmission],
         apiKey: String
     ) async throws -> [ClockifyCreatedTimeEntryDTO] {
-        submissions.enumerated().map { index, submission in
+        if let createError { throw createError }
+        return submissions.enumerated().map { index, submission in
             ClockifyCreatedTimeEntryDTO(id: "clockify-\(index)", description: submission.request.description)
         }
     }
 }
 
 private struct HarvestServiceStub: HarvestServicing {
+    var createError: Error?
+
     func fetchAccounts(accessToken: String) async throws -> [HarvestAccountSummary] {
         [
             HarvestAccountSummary(id: 7, name: "Harvest Account"),
@@ -1321,7 +1420,8 @@ private struct HarvestServiceStub: HarvestServicing {
         _ submissions: [StoredTimeEntryRecord.HarvestSubmission],
         accessToken: String
     ) async throws -> [HarvestCreatedTimeEntryDTO] {
-        submissions.enumerated().map { index, submission in
+        if let createError { throw createError }
+        return submissions.enumerated().map { index, submission in
             HarvestCreatedTimeEntryDTO(id: index + 1, notes: submission.timestampRequest.notes)
         }
     }
