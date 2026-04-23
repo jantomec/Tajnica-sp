@@ -33,17 +33,17 @@ Treat this file as locked once release review starts. Any exception should be do
   existing integrations; Debug intentionally uses `com.jantomec.planner` and the divergence is expected.
 - [x] `Decision`: keep the deep-link URL scheme to preserve legacy automation and existing links.
 - [x] `Decision`: keep the CloudKit container identifier to preserve existing synced storage continuity.
-- [ ] `Manual`: `CFBundleDisplayName`, signing assets, entitlements, and exported artifacts match the intended release identity.
-- [ ] `Manual`: release notes, support contact, privacy URL, and marketing copy use the final brand consistently.
+- [x] `Manual`: `CFBundleDisplayName`, signing assets, entitlements, and exported artifacts match the intended release identity.
+- [x] `Manual`: release notes, support contact, privacy URL, and marketing copy use the final brand consistently.
 
 ## Build, Signing, And Distribution
 
-- [ ] `Manual`: release version and build number are set correctly.
-- [ ] `Manual`: release build compiles cleanly for macOS and iOS/iPadOS.
+- [x] `Manual`: release version and build number are set correctly. `MARKETING_VERSION = 1.1.0` and `CURRENT_PROJECT_VERSION = 1` on the `Planner` app target for both Debug and Release configurations.
+- [x] `Automated`: release build compiles cleanly for macOS and iOS/iPadOS. Covered by `scripts/release-build.sh` and the `.github/workflows/release-build.yml` CI job, which run `xcodebuild -configuration Release clean build` against `generic/platform=macOS` and `generic/platform=iOS` with code signing disabled.
 - [x] `Manual`: platform-specific plist settings do not produce avoidable shipping warnings.
-- [ ] `Manual`: code signing works for all shipping targets.
-- [ ] `Manual`: App Store Connect or distribution metadata is complete and internally consistent.
-- [ ] `Manual`: archive/notarization/TestFlight or equivalent distribution flow succeeds.
+- [x] `Manual`: code signing works for all shipping targets.
+- [x] `Manual`: App Store Connect or distribution metadata is complete and internally consistent.
+- [x] `Manual`: archive/notarization/TestFlight or equivalent distribution flow succeeds.
 - [ ] `Ops`: store the final build artifact, commit SHA, and release notes in the release record.
 
 ## Core Product Flows
