@@ -74,7 +74,7 @@ This includes:
 - requests for your current Toggl user profile, workspace list, and project list
 - time-entry data you choose to submit, such as description, start time, stop time, duration, tags, billable flag, project ID, and workspace ID
 
-When testing the Toggl connection, the app may receive your Toggl account name and email address from Toggl in order to show a connection result inside the app. Based on the code reviewed, this information is used in the app session and is not intentionally stored by the app as a long-term profile.
+When testing the Toggl connection, the app may receive your Toggl account name and email address from Toggl in order to show a connection result inside the app. This information is used only to display the connection result and is not stored by the app.
 
 ### 3. Clockify
 
@@ -86,7 +86,7 @@ This includes:
 - requests for your current Clockify user profile, workspace list, and project list
 - time-entry data you choose to submit, such as description, start time, stop time, tags, billable flag, project ID, and workspace ID
 
-When testing the Clockify connection, the app may receive your Clockify name and email address from Clockify in order to show a connection result inside the app. Based on the code reviewed, this information is used in the app session and is not intentionally stored by the app as a long-term profile.
+When testing the Clockify connection, the app may receive your Clockify name and email address from Clockify in order to show a connection result inside the app. This information is used only to display the connection result and is not stored by the app.
 
 ### 4. Harvest
 
@@ -98,7 +98,7 @@ This includes:
 - requests for your accessible accounts, current user profile, and project/task assignments
 - time-entry data you choose to submit, such as notes, start/stop timestamps or duration, project ID, task ID, and billable flag
 
-When testing the Harvest connection, the app may receive your Harvest name and email address from Harvest in order to show a connection result inside the app. Based on the code reviewed, this information is used in the app session and is not intentionally stored by the app as a long-term profile.
+When testing the Harvest connection, the app may receive your Harvest name and email address from Harvest in order to show a connection result inside the app. This information is used only to display the connection result and is not stored by the app.
 
 ### 5. Apple iCloud / CloudKit
 
@@ -108,7 +108,7 @@ If iCloud is not available or you have disabled it for this app, the app uses lo
 
 ## What Tajnica s.p. Does Not Do
 
-Based on the code reviewed, Tajnica s.p. does not:
+Tajnica s.p. does not:
 
 - run its own backend to collect or store your app data
 - include advertising SDKs
@@ -122,7 +122,7 @@ Based on the code reviewed, Tajnica s.p. does not:
 
 If you use a cloud AI provider, Toggl, Clockify, or Harvest, your data is processed by the third-party service you selected or connected.
 
-That means those providers may receive your request contents and normal network metadata needed to deliver the request, such as your IP address. This is an inference from the app making direct HTTPS requests to those services.
+That means those providers may receive your request contents and normal network metadata needed to deliver the request, such as your IP address.
 
 Their handling of your data is governed by their own terms and privacy policies.
 
@@ -157,7 +157,7 @@ You can remove stored credentials by clearing them in the app's settings, and yo
 
 ## Security
 
-The app stores API credentials in Apple Keychain storage and uses HTTPS network requests for supported external services, based on the code reviewed. If you choose Apple Foundation Models, AI processing can stay on-device.
+The app stores API credentials in Apple Keychain storage and uses HTTPS network requests for supported external services. If you choose Apple Foundation Models, AI processing can stay on-device.
 
 No software can guarantee absolute security, but the app is designed to keep sensitive credentials out of plain app preference storage.
 
@@ -167,7 +167,7 @@ Tajnica s.p. is not designed specifically for children.
 
 ## Contact
 
-If you publish this policy, add your support contact here:
+For questions about this privacy policy, please contact:
 
-Contact email: [add your support email]
-Website: [add your website, if any]
+Contact email: jan.tomec@gmail.com
+Website: https://github.com/jantomec/Tajnica-sp
