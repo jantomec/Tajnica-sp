@@ -47,7 +47,7 @@ struct PlannerIntentFacade {
         }
 
         appModel.appendToDraft(trimmed)
-        return "Added to today's Planner draft. \(draftOverview())"
+        return "Added to today's draft. \(draftOverview())"
     }
 
     func addCurrentDraftEntry(
@@ -200,7 +200,7 @@ struct PlannerIntentFacade {
         try await appModel.ensureTrackerCatalogsLoaded(for: .toggl)
 
         guard appModel.enabledTimeTrackers.contains(.toggl) else {
-            throw PlannerIntentError(message: "Toggl is not connected in Planner.")
+            throw PlannerIntentError(message: "Toggl is not connected in \(AppConfiguration.displayName)")
         }
 
         guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
@@ -224,7 +224,7 @@ struct PlannerIntentFacade {
         try await appModel.ensureTrackerCatalogsLoaded(for: .toggl)
 
         guard appModel.enabledTimeTrackers.contains(.toggl) else {
-            throw PlannerIntentError(message: "Toggl is not connected in Planner.")
+            throw PlannerIntentError(message: "Toggl is not connected in \(AppConfiguration.displayName)")
         }
 
         guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
@@ -248,7 +248,7 @@ struct PlannerIntentFacade {
         try await appModel.ensureTrackerCatalogsLoaded(for: .clockify)
 
         guard appModel.enabledTimeTrackers.contains(.clockify) else {
-            throw PlannerIntentError(message: "Clockify is not connected in Planner.")
+            throw PlannerIntentError(message: "Clockify is not connected in \(AppConfiguration.displayName)")
         }
 
         guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
@@ -272,7 +272,7 @@ struct PlannerIntentFacade {
         try await appModel.ensureTrackerCatalogsLoaded(for: .clockify)
 
         guard appModel.enabledTimeTrackers.contains(.clockify) else {
-            throw PlannerIntentError(message: "Clockify is not connected in Planner.")
+            throw PlannerIntentError(message: "Clockify is not connected in \(AppConfiguration.displayName)")
         }
 
         guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
@@ -298,7 +298,7 @@ struct PlannerIntentFacade {
         try await appModel.ensureTrackerCatalogsLoaded(for: .harvest)
 
         guard appModel.enabledTimeTrackers.contains(.harvest) else {
-            throw PlannerIntentError(message: "Harvest is not connected in Planner.")
+            throw PlannerIntentError(message: "Harvest is not connected in \(AppConfiguration.displayName)")
         }
 
         guard let entry = appModel.draft.candidateEntries.first(where: { $0.id == entryID }) else {
@@ -339,7 +339,7 @@ struct PlannerIntentFacade {
         try await prepareForIntent()
 
         guard !appModel.draft.note.rawText.trimmed.isEmpty else {
-            throw PlannerIntentError(message: "Your current Planner draft note is empty.")
+            throw PlannerIntentError(message: "Your current draft note is empty.")
         }
 
         guard appModel.draft.candidateEntries.isEmpty else {
@@ -358,7 +358,7 @@ struct PlannerIntentFacade {
             return status
         }
 
-        return "Processed today's Planner draft. \(draftOverview())"
+        return "Processed today's draft. \(draftOverview())"
     }
 
     func showCurrentDraftSummary() async throws -> String {
@@ -391,7 +391,7 @@ struct PlannerIntentFacade {
             return status
         }
 
-        throw PlannerIntentError(message: "Planner did not return a submission result.")
+        throw PlannerIntentError(message: "No submission result was returned.")
     }
 
     private func prepareForIntent() async throws {

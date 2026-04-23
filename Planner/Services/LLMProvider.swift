@@ -116,7 +116,7 @@ enum LLMProvider: String, CaseIterable, Identifiable, Codable {
         case .appleFoundation:
             "Runs on-device with Apple Intelligence, so it is private, fast, and does not need an API key. It depends on supported Apple hardware and can be less capable than cloud models for harder reasoning or multilingual notes."
         case .disabled:
-            "No cloud AI provider is selected. Planner will use Apple Intelligence only when it is enabled and available on this device."
+            "No cloud AI provider is selected. \(AppConfiguration.displayName) will use Apple Intelligence only when it is enabled and available on this device."
         case .gemini, .claude, .openAI:
             "Runs in the cloud, so it needs an API key and sends note content to the selected provider. Cloud models are usually stronger for nuanced reasoning, model choice, and broader multilingual support."
         }
@@ -127,7 +127,7 @@ enum LLMProvider: String, CaseIterable, Identifiable, Codable {
         case .appleFoundation:
             "\(AppConfiguration.displayName) uses Apple's built-in on-device model. There is no remote model ID or API key to configure. If availability fails, the device may not support Apple Intelligence, Apple Intelligence may be turned off, or the model may still be preparing."
         case .disabled:
-            "Choose Disable if you do not want Planner to use Gemini, Claude, or OpenAI as the primary AI provider."
+            "Choose Disable if you do not want \(AppConfiguration.displayName) to use Gemini, Claude, or OpenAI as the primary AI provider."
         case .gemini, .claude, .openAI:
             nil
         }

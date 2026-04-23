@@ -2,7 +2,7 @@ import AppIntents
 import Foundation
 
 struct DraftEntryEntity: AppEntity, Hashable {
-    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Planner Draft Entry"
+    static let typeDisplayRepresentation: TypeDisplayRepresentation = "Draft Entry"
     static let defaultQuery = DraftEntryQuery()
 
     let id: UUID

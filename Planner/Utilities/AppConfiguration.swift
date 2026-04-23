@@ -4,6 +4,7 @@ enum AppConfiguration {
     // Keep legacy storage namespaces stable; this is not the user-facing app name.
     static let appName = "Planner"
     static let displayName = "Tajnica s.p."
+    static let exportFilenamePrefix = "tajnica-sp-time-tracker"
     static let cloudKitContainerIdentifier = "iCloud.com.jantomec.planner"
     static let createdWith = displayName
     static let defaultAppleFoundationModel = "on-device"

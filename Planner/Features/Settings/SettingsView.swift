@@ -218,7 +218,7 @@ private struct TimeTrackerSettingsTabView: View {
     @State private var exportStartDate = Date.now
     @State private var exportEndDate = Date.now
     @State private var exportDocument = AppStorageExportDocument(data: Data("{}".utf8))
-    @State private var exportFilename = "planner-time-tracker.json"
+    @State private var exportFilename = "\(AppConfiguration.exportFilenamePrefix).json"
     @State private var isPresentingExporter = false
     @State private var exportResult: PlannerAppModel.InlineResult?
     @State private var hasInitializedExportDates = false

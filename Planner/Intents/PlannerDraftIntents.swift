@@ -2,15 +2,15 @@ import AppIntents
 import Foundation
 
 struct AppendToCurrentDraftIntent: AppIntent {
-    static let title: LocalizedStringResource = "Append to Planner Draft"
-    static let description = IntentDescription("Add text to the current Planner draft note.")
+    static let title: LocalizedStringResource = "Append to Current Draft"
+    static let description = IntentDescription("Add text to the current draft note.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(title: "Text")
     var noteText: String
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Append \(\.$noteText) to the current Planner draft")
+        Summary("Append \(\.$noteText) to the current draft")
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
@@ -21,8 +21,8 @@ struct AppendToCurrentDraftIntent: AppIntent {
 }
 
 struct AddDraftEntryIntent: AppIntent {
-    static let title: LocalizedStringResource = "Add Planner Draft Entry"
-    static let description = IntentDescription("Add a manual time entry to the current Planner draft.")
+    static let title: LocalizedStringResource = "Add Draft Entry"
+    static let description = IntentDescription("Add a manual time entry to the current draft.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(title: "Description")
@@ -35,7 +35,7 @@ struct AddDraftEntryIntent: AppIntent {
     var endTime: Date
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Add \(\.$entryDescription) from \(\.$startTime) to \(\.$endTime) to the current Planner draft")
+        Summary("Add \(\.$entryDescription) from \(\.$startTime) to \(\.$endTime) to the current draft")
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
@@ -50,8 +50,8 @@ struct AddDraftEntryIntent: AppIntent {
 }
 
 struct UpdateDraftEntryIntent: AppIntent {
-    static let title: LocalizedStringResource = "Update Planner Draft Entry"
-    static let description = IntentDescription("Update an existing time entry in the current Planner draft.")
+    static let title: LocalizedStringResource = "Update Draft Entry"
+    static let description = IntentDescription("Update an existing time entry in the current draft.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(title: "Entry")
@@ -67,7 +67,7 @@ struct UpdateDraftEntryIntent: AppIntent {
     var endTime: Date?
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Update \(\.$entry) in the current Planner draft")
+        Summary("Update \(\.$entry) in the current draft")
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
@@ -83,15 +83,15 @@ struct UpdateDraftEntryIntent: AppIntent {
 }
 
 struct DeleteDraftEntryIntent: AppIntent {
-    static let title: LocalizedStringResource = "Delete Planner Draft Entry"
-    static let description = IntentDescription("Delete a time entry from the current Planner draft.")
+    static let title: LocalizedStringResource = "Delete Draft Entry"
+    static let description = IntentDescription("Delete a time entry from the current draft.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(title: "Entry")
     var entry: DraftEntryEntity
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Delete \(\.$entry) from the current Planner draft")
+        Summary("Delete \(\.$entry) from the current draft")
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
@@ -102,12 +102,12 @@ struct DeleteDraftEntryIntent: AppIntent {
 }
 
 struct ProcessCurrentDraftIntent: AppIntent {
-    static let title: LocalizedStringResource = "Process Planner Draft"
-    static let description = IntentDescription("Process the current Planner draft note into candidate time entries.")
+    static let title: LocalizedStringResource = "Process Current Draft"
+    static let description = IntentDescription("Process the current draft note into candidate time entries.")
     static let supportedModes: IntentModes = .background
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Process the current Planner draft")
+        Summary("Process the current draft")
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
@@ -118,12 +118,12 @@ struct ProcessCurrentDraftIntent: AppIntent {
 }
 
 struct ShowCurrentDraftSummaryIntent: AppIntent {
-    static let title: LocalizedStringResource = "Show Planner Draft Summary"
-    static let description = IntentDescription("Summarize the current Planner draft note and entries.")
+    static let title: LocalizedStringResource = "Show Current Draft Summary"
+    static let description = IntentDescription("Summarize the current draft note and entries.")
     static let supportedModes: IntentModes = .background
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Show the current Planner draft summary")
+        Summary("Show the current draft summary")
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {
@@ -134,16 +134,16 @@ struct ShowCurrentDraftSummaryIntent: AppIntent {
 }
 
 struct OpenPlannerCaptureIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open Planner Capture"
-    static let description = IntentDescription("Open Planner directly to the Capture tab.")
+    static let title: LocalizedStringResource = "Open Capture"
+    static let description = IntentDescription("Open the app directly to the Capture tab.")
     static let supportedModes: IntentModes = .foreground
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Open Planner Capture")
+        Summary("Open Capture")
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let message = "Opening Capture in Planner."
+        let message = "Opening Capture in \(AppConfiguration.displayName)"
         return .result(
             opensIntent: OpenURLIntent(PlannerDeepLink.capture.url),
             dialog: IntentDialog(stringLiteral: message)
@@ -152,24 +152,24 @@ struct OpenPlannerCaptureIntent: AppIntent {
 }
 
 struct OpenPlannerReviewIntent: AppIntent {
-    static let title: LocalizedStringResource = "Open Planner Review"
-    static let description = IntentDescription("Open Planner directly to the Review tab.")
+    static let title: LocalizedStringResource = "Open Review"
+    static let description = IntentDescription("Open the app directly to the Review tab.")
     static let supportedModes: IntentModes = .foreground
 
     @Parameter(title: "Entry")
     var entry: DraftEntryEntity?
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Open Planner Review")
+        Summary("Open Review")
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let message: String
         if let entry {
             let title = entry.descriptionText.isBlank ? "Untitled Entry" : entry.descriptionText
-            message = "Opening Review for \"\(title)\" in Planner."
+            message = "Opening Review for \"\(title)\" in \(AppConfiguration.displayName)"
         } else {
-            message = "Opening Review in Planner."
+            message = "Opening Review in \(AppConfiguration.displayName)"
         }
 
         return .result(
@@ -180,12 +180,12 @@ struct OpenPlannerReviewIntent: AppIntent {
 }
 
 struct SubmitCurrentDraftIntent: AppIntent {
-    static let title: LocalizedStringResource = "Submit Planner Draft"
-    static let description = IntentDescription("Submit the current Planner draft entries.")
+    static let title: LocalizedStringResource = "Submit Current Draft"
+    static let description = IntentDescription("Submit the current draft entries.")
     static let supportedModes: IntentModes = .background
 
     static var parameterSummary: some ParameterSummary {
-        Summary("Submit the current Planner draft")
+        Summary("Submit the current draft")
     }
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> & ProvidesDialog {

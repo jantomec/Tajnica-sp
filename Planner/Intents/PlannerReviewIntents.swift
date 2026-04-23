@@ -51,7 +51,7 @@ enum DraftEntryBillableStateIntent: String, AppEnum {
 
 struct DuplicateDraftEntryIntent: AppIntent {
     static let title: LocalizedStringResource = "Duplicate Draft Entry"
-    static let description = IntentDescription("Create a copy of one entry in the current Planner draft.")
+    static let description = IntentDescription("Create a copy of one entry in the current draft.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(
@@ -73,7 +73,7 @@ struct DuplicateDraftEntryIntent: AppIntent {
 
 struct SetDraftEntryBillableIntent: AppIntent {
     static let title: LocalizedStringResource = "Set Entry Billable State"
-    static let description = IntentDescription("Mark a Planner draft entry as billable, non-billable, or not set.")
+    static let description = IntentDescription("Mark a current draft entry as billable, non-billable, or not set.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(
@@ -104,7 +104,7 @@ struct SetDraftEntryBillableIntent: AppIntent {
 
 struct SetDraftEntryTagsIntent: AppIntent {
     static let title: LocalizedStringResource = "Set Entry Tags"
-    static let description = IntentDescription("Replace the tags on a Planner draft entry using a comma-separated tag list.")
+    static let description = IntentDescription("Replace the tags on a current draft entry using a comma-separated tag list.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(
@@ -136,7 +136,7 @@ struct SetDraftEntryTagsIntent: AppIntent {
 
 struct AssignTogglWorkspaceIntent: AppIntent {
     static let title: LocalizedStringResource = "Assign Toggl Workspace"
-    static let description = IntentDescription("Set the Toggl workspace for a Planner draft entry.")
+    static let description = IntentDescription("Set the Toggl workspace for a current draft entry.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(
@@ -167,7 +167,7 @@ struct AssignTogglWorkspaceIntent: AppIntent {
 
 struct AssignTogglProjectIntent: AppIntent {
     static let title: LocalizedStringResource = "Assign Toggl Project"
-    static let description = IntentDescription("Set the Toggl project for a Planner draft entry.")
+    static let description = IntentDescription("Set the Toggl project for a current draft entry.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(
@@ -199,7 +199,7 @@ struct AssignTogglProjectIntent: AppIntent {
 
 struct AssignClockifyWorkspaceIntent: AppIntent {
     static let title: LocalizedStringResource = "Assign Clockify Workspace"
-    static let description = IntentDescription("Set the Clockify workspace for a Planner draft entry.")
+    static let description = IntentDescription("Set the Clockify workspace for a current draft entry.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(
@@ -230,7 +230,7 @@ struct AssignClockifyWorkspaceIntent: AppIntent {
 
 struct AssignClockifyProjectIntent: AppIntent {
     static let title: LocalizedStringResource = "Assign Clockify Project"
-    static let description = IntentDescription("Set the Clockify project for a Planner draft entry.")
+    static let description = IntentDescription("Set the Clockify project for a current draft entry.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(
@@ -262,7 +262,7 @@ struct AssignClockifyProjectIntent: AppIntent {
 
 struct AssignHarvestTaskIntent: AppIntent {
     static let title: LocalizedStringResource = "Assign Harvest Task"
-    static let description = IntentDescription("Set the Harvest task for a Planner draft entry.")
+    static let description = IntentDescription("Set the Harvest task for a current draft entry.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(
@@ -295,7 +295,7 @@ struct AssignHarvestTaskIntent: AppIntent {
 
 struct ClearTrackerAssignmentIntent: AppIntent {
     static let title: LocalizedStringResource = "Clear Tracker Assignment"
-    static let description = IntentDescription("Remove the selected tracker assignment from a Planner draft entry.")
+    static let description = IntentDescription("Remove the selected tracker assignment from a current draft entry.")
     static let supportedModes: IntentModes = .background
 
     @Parameter(

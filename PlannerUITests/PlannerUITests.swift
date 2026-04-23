@@ -4,7 +4,6 @@ final class PlannerUITests: XCTestCase {
     #if os(iOS)
     private enum SiriPhrase {
         static let capture = [
-            "Open Planner Capture",
             "Open Capture in Tajnica s.p.",
             "Open Capture in Tajnica",
             "Show Capture in Tajnica",
@@ -12,7 +11,6 @@ final class PlannerUITests: XCTestCase {
         ]
 
         static let review = [
-            "Open Planner Review",
             "Open Review in Tajnica s.p.",
             "Open Review in Tajnica",
             "Review entries in Tajnica",
@@ -65,7 +63,7 @@ final class PlannerUITests: XCTestCase {
         assertNavigationTitle("Diary", in: app)
 
         activateSiri(
-            using: ["Review Entries", "Open Planner Review", "Review entries in Tajnica"],
+            using: ["Review Entries", "Open Review in Tajnica s.p.", "Review entries in Tajnica"],
             expecting: "Review",
             in: app
         )

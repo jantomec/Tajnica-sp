@@ -68,7 +68,7 @@
 
 ## Siri / Shortcuts Smoke Suite
 
-- [ ] First launch registers Planner shortcuts and they appear in the Shortcuts app
+- [ ] First launch registers Tajnica s.p. shortcuts and they appear in the Shortcuts app
 - [ ] Siri phrase opens Capture
 - [ ] Siri phrase opens Review
 - [ ] Alternate Siri phrase still opens Review

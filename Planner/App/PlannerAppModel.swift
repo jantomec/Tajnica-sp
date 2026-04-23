@@ -1310,7 +1310,7 @@ final class PlannerAppModel: ObservableObject {
 
         return ExportPreparation(
             document: AppStorageExportDocument(data: data),
-            filename: "planner-time-tracker-\(format.rawValue)-\(Self.exportFilenameDate(range.lowerBound))-\(Self.exportFilenameDate(range.upperBound)).json"
+            filename: "\(AppConfiguration.exportFilenamePrefix)-\(format.rawValue)-\(exportFilenameDate(range.lowerBound))-\(exportFilenameDate(range.upperBound)).json"
         )
     }
 
@@ -1836,13 +1836,14 @@ final class PlannerAppModel: ObservableObject {
         return lower...inclusiveUpper
     }
 
-    private static func exportFilenameDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: date)
+    private func exportFilenameDate(_ date: Date) -> String {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        let year = components.year ?? 0
+        let month = components.month ?? 0
+        let day = components.day ?? 0
+        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 
     private static func commaSeparatedList(_ values: [String]) -> String {
