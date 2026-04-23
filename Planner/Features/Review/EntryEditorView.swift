@@ -466,3 +466,143 @@ struct EntryEditorView: View {
         return target.hasSelection ? target : nil
     }
 }
+
+#if DEBUG
+private enum EntryEditorPreviewData {
+    static let timeZone = TimeZone(identifier: "Europe/Ljubljana") ?? .autoupdatingCurrent
+
+    static let togglCatalogs = [
+        TogglWorkspaceCatalog(
+            workspace: WorkspaceSummary(id: 101, name: "Client Work"),
+            projects: [
+                ProjectSummary(id: 1_001, name: "Planner macOS", workspaceId: 101),
+                ProjectSummary(id: 1_002, name: "Admin", workspaceId: 101)
+            ]
+        ),
+        TogglWorkspaceCatalog(
+            workspace: WorkspaceSummary(id: 102, name: "Internal"),
+            projects: [
+                ProjectSummary(id: 1_003, name: "Ops", workspaceId: 102)
+            ]
+        )
+    ]
+
+    static let clockifyCatalogs = [
+        ClockifyWorkspaceCatalog(
+            workspace: ClockifyWorkspaceSummary(id: "clockify-client", name: "Client Workspace"),
+            projects: [
+                ClockifyProjectSummary(id: "clockify-planner", name: "Planner Refresh", workspaceId: "clockify-client"),
+                ClockifyProjectSummary(id: "clockify-support", name: "Support", workspaceId: "clockify-client")
+            ]
+        ),
+        ClockifyWorkspaceCatalog(
+            workspace: ClockifyWorkspaceSummary(id: "clockify-internal", name: "Internal Workspace"),
+            projects: [
+                ClockifyProjectSummary(id: "clockify-rd", name: "R&D", workspaceId: "clockify-internal")
+            ]
+        )
+    ]
+
+    static let harvestCatalogs = [
+        HarvestAccountCatalog(
+            account: HarvestAccountSummary(id: 201, name: "Acme Studio"),
+            projects: [
+                HarvestProjectSummary(
+                    id: 2_001,
+                    name: "Planner Product",
+                    taskAssignments: [
+                        HarvestTaskSummary(id: 3_001, name: "Feature Development"),
+                        HarvestTaskSummary(id: 3_002, name: "Bugfixing")
+                    ]
+                ),
+                HarvestProjectSummary(
+                    id: 2_002,
+                    name: "Discovery",
+                    taskAssignments: [
+                        HarvestTaskSummary(id: 3_003, name: "Research")
+                    ]
+                )
+            ]
+        ),
+        HarvestAccountCatalog(
+            account: HarvestAccountSummary(id: 202, name: "Internal Org"),
+            projects: [
+                HarvestProjectSummary(
+                    id: 2_003,
+                    name: "Operations",
+                    taskAssignments: [
+                        HarvestTaskSummary(id: 3_004, name: "Planning")
+                    ]
+                )
+            ]
+        )
+    ]
+
+    static var entry: CandidateTimeEntry {
+        CandidateTimeEntry(
+            date: day,
+            start: date(hour: 9, minute: 30),
+            stop: date(hour: 11, minute: 0),
+            description: "Refine the EntryEditor preview and sync review flow",
+            togglTarget: CandidateTimeEntry.TogglTarget(
+                workspaceName: "Client Work",
+                workspaceId: 101,
+                projectName: "Planner macOS",
+                projectId: 1_001
+            ),
+            clockifyTarget: CandidateTimeEntry.ClockifyTarget(
+                workspaceName: "Client Workspace",
+                workspaceId: "clockify-client",
+                projectName: "Planner Refresh",
+                projectId: "clockify-planner"
+            ),
+            harvestTarget: CandidateTimeEntry.HarvestTarget(
+                accountName: "Acme Studio",
+                accountId: 201,
+                projectName: "Planner Product",
+                projectId: 2_001,
+                taskName: "Feature Development",
+                taskId: 3_001
+            ),
+            tags: ["swiftui", "preview", "review"],
+            billable: true,
+            source: .user
+        )
+    }
+
+    private static var day: Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.date(from: DateComponents(
+            timeZone: timeZone,
+            year: 2026,
+            month: 4,
+            day: 16
+        ))!
+    }
+
+    private static func date(hour: Int, minute: Int) -> Date {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        return calendar.date(from: DateComponents(
+            timeZone: timeZone,
+            year: 2026,
+            month: 4,
+            day: 16,
+            hour: hour,
+            minute: minute
+        ))!
+    }
+}
+
+#Preview("Entry Editor", traits: .fixedLayout(width: 420, height: 720)) {
+    EntryEditorView(
+        entry: EntryEditorPreviewData.entry,
+        togglCatalogs: EntryEditorPreviewData.togglCatalogs,
+        clockifyCatalogs: EntryEditorPreviewData.clockifyCatalogs,
+        harvestCatalogs: EntryEditorPreviewData.harvestCatalogs,
+        enabledTrackers: Set(TimeTrackerProvider.allCases),
+        onSave: { _ in }
+    )
+}
+#endif

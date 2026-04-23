@@ -651,11 +651,21 @@ private struct ReviewPreviewHarvestService: HarvestServicing {
     }
 }
 
-#Preview("Review") {
+#Preview("Review - Desktop", traits: .fixedLayout(width: 1100, height: 780)) {
     NavigationStack {
         ReviewView()
     }
-    .frame(width: 1100, height: 780)
     .environmentObject(makeReviewPreviewModel())
 }
+
+#if os(iOS)
+#Preview("Review - iPhone", traits: .fixedLayout(width: 393, height: 852)) {
+    NavigationStack {
+        ReviewView()
+    }
+    .environment(\.horizontalSizeClass, .compact)
+    .environment(\.verticalSizeClass, .regular)
+    .environmentObject(makeReviewPreviewModel())
+}
+#endif
 #endif

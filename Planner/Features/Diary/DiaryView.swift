@@ -276,3 +276,334 @@ private extension StoredTimeEntryRecord {
         )
     }
 }
+
+#if DEBUG
+@MainActor
+private func makeDiaryPreviewModel() -> PlannerAppModel {
+    let persistenceController = try! PlannerPersistenceController.inMemory()
+    let suiteName = "DiaryViewPreview"
+    let userDefaults = UserDefaults(suiteName: suiteName)!
+    userDefaults.removePersistentDomain(forName: suiteName)
+
+    let preferencesStore = PreferencesStore(userDefaults: userDefaults)
+    preferencesStore.selectedLLMProvider = .openAI
+    preferencesStore.setLLMModel("gpt-4o", for: .openAI)
+    preferencesStore.userContext = "I usually capture rough notes, then review and submit cleaned-up time entries later."
+
+    let previewTimeZone = TimeZone(identifier: "Europe/Ljubljana") ?? .autoupdatingCurrent
+    let previewRecords = makeDiaryPreviewRecords(in: previewTimeZone)
+    let olderPrompt = previewRecords[0]
+    let currentPrompt = previewRecords[1]
+    let latestPrompt = previewRecords[2]
+
+    try! persistenceController.repository.appendDiaryPrompt(olderPrompt)
+    try! persistenceController.repository.appendDiaryPrompt(currentPrompt)
+    try! persistenceController.repository.appendDiaryPrompt(latestPrompt)
+    try! persistenceController.repository.upsertStoredEntries(
+        diaryPreviewStoredEntries(for: olderPrompt, in: previewTimeZone)
+    )
+    try! persistenceController.repository.saveDraft(
+        diaryPreviewDraft(for: latestPrompt, in: previewTimeZone)
+    )
+
+    let model = PlannerAppModel(
+        preferencesStore: preferencesStore,
+        syncRepository: persistenceController.repository,
+        storageSyncMode: persistenceController.syncMode,
+        keychainStore: DiaryPreviewKeychainStore(),
+        llmRouter: LLMServiceRouter(
+            appleFoundationService: DiaryPreviewLLMService(),
+            geminiService: DiaryPreviewLLMService(),
+            claudeService: DiaryPreviewLLMService(),
+            openAIService: DiaryPreviewLLMService()
+        ),
+        togglService: DiaryPreviewTogglService(),
+        clockifyService: DiaryPreviewClockifyService(),
+        harvestService: DiaryPreviewHarvestService(),
+        timeZone: previewTimeZone
+    )
+    model.selectedTab = .diary
+    return model
+}
+
+private func makeDiaryPreviewRecords(in timeZone: TimeZone) -> [DiaryPromptRecord] {
+    let firstDay = diaryPreviewDay(year: 2026, month: 4, day: 15, in: timeZone)
+    let secondDay = diaryPreviewDay(year: 2026, month: 4, day: 16, in: timeZone)
+
+    return [
+        DiaryPromptRecord(
+            day: firstDay,
+            rawText: """
+            Yesterday:
+            09:00 client standup
+            10:00-12:00 worked on export fixes
+            14:00 triaged follow-up bugs and shipped a small patch
+            """,
+            createdAt: diaryPreviewTimestamp(year: 2026, month: 4, day: 15, hour: 18, minute: 5, in: timeZone)
+        ),
+        DiaryPromptRecord(
+            day: secondDay,
+            rawText: "Morning planning, review polish, and a couple of quick support replies before lunch.",
+            createdAt: diaryPreviewTimestamp(year: 2026, month: 4, day: 16, hour: 10, minute: 5, in: timeZone)
+        ),
+        DiaryPromptRecord(
+            day: secondDay,
+            rawText: """
+            Afternoon notes:
+            13:30 deep focus on the diary feed layout
+            14:15 adjusted the bubble width behavior
+            15:00 validated timeline interactions
+            15:45 checked the compact preview output
+            16:30 wrapped preview fixes and tagged cleanup
+            """,
+            createdAt: diaryPreviewTimestamp(year: 2026, month: 4, day: 16, hour: 17, minute: 10, in: timeZone)
+        )
+    ]
+}
+
+private func diaryPreviewDraft(for record: DiaryPromptRecord, in timeZone: TimeZone) -> PlannerDraft {
+    PlannerDraft(
+        note: DailyNoteInput(date: record.day, rawText: record.rawText),
+        candidateEntries: [
+            CandidateTimeEntry(
+                date: record.day,
+                start: try! LocalTimeParser.parse("13:30", on: record.day, in: timeZone),
+                stop: try! LocalTimeParser.parse("15:00", on: record.day, in: timeZone),
+                description: "Deep focus on diary feed layout",
+                togglTarget: CandidateTimeEntry.TogglTarget(
+                    workspaceName: "Client Work",
+                    workspaceId: 101,
+                    projectName: "Diary UX",
+                    projectId: 1_201
+                ),
+                tags: ["swiftui", "diary"],
+                source: .user
+            ),
+            CandidateTimeEntry(
+                date: record.day,
+                start: try! LocalTimeParser.parse("15:00", on: record.day, in: timeZone),
+                stop: try! LocalTimeParser.parse("16:30", on: record.day, in: timeZone),
+                description: "Validate timeline interactions and polish previews",
+                clockifyTarget: CandidateTimeEntry.ClockifyTarget(
+                    workspaceName: "Internal Workspace",
+                    workspaceId: "clockify-internal",
+                    projectName: "Preview Cleanup",
+                    projectId: "clockify-preview"
+                ),
+                harvestTarget: CandidateTimeEntry.HarvestTarget(
+                    accountName: "Acme Studio",
+                    accountId: 201,
+                    projectName: "Planner Product",
+                    projectId: 2_001,
+                    taskName: "Feature Development",
+                    taskId: 3_001
+                ),
+                tags: ["timeline", "preview"],
+                billable: true,
+                source: .gemini
+            )
+        ],
+        assumptions: [
+            "Combined short support replies into the surrounding work blocks."
+        ],
+        summary: "Two candidate entries are ready for the latest diary prompt.",
+        lastProcessedAt: .now,
+        sourceDiaryPromptID: record.id
+    )
+}
+
+private func diaryPreviewStoredEntries(
+    for record: DiaryPromptRecord,
+    in timeZone: TimeZone
+) -> [StoredTimeEntryRecord] {
+    [
+        StoredTimeEntryRecord(
+            entry: CandidateTimeEntry(
+                date: record.day,
+                start: try! LocalTimeParser.parse("09:00", on: record.day, in: timeZone),
+                stop: try! LocalTimeParser.parse("10:00", on: record.day, in: timeZone),
+                description: "Client standup and planning",
+                togglTarget: CandidateTimeEntry.TogglTarget(
+                    workspaceName: "Client Work",
+                    workspaceId: 101,
+                    projectName: "Planner macOS",
+                    projectId: 1_001
+                ),
+                tags: ["team", "planning"],
+                billable: true,
+                source: .user
+            ),
+            submittedAt: diaryPreviewTimestamp(year: 2026, month: 4, day: 15, hour: 18, minute: 5, in: timeZone),
+            diaryPromptRecordID: record.id
+        ),
+        StoredTimeEntryRecord(
+            entry: CandidateTimeEntry(
+                date: record.day,
+                start: try! LocalTimeParser.parse("10:00", on: record.day, in: timeZone),
+                stop: try! LocalTimeParser.parse("12:00", on: record.day, in: timeZone),
+                description: "Export fixes and regression pass",
+                clockifyTarget: CandidateTimeEntry.ClockifyTarget(
+                    workspaceName: "Client Workspace",
+                    workspaceId: "clockify-client",
+                    projectName: "Export Stabilization",
+                    projectId: "clockify-export"
+                ),
+                tags: ["export", "qa"],
+                billable: true,
+                source: .gemini
+            ),
+            submittedAt: diaryPreviewTimestamp(year: 2026, month: 4, day: 15, hour: 18, minute: 5, in: timeZone),
+            diaryPromptRecordID: record.id
+        )
+    ]
+}
+
+private func diaryPreviewDay(year: Int, month: Int, day: Int, in timeZone: TimeZone) -> Date {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    return calendar.date(from: DateComponents(
+        timeZone: timeZone,
+        year: year,
+        month: month,
+        day: day
+    ))!
+}
+
+private func diaryPreviewTimestamp(
+    year: Int,
+    month: Int,
+    day: Int,
+    hour: Int,
+    minute: Int,
+    in timeZone: TimeZone
+) -> Date {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = timeZone
+    return calendar.date(from: DateComponents(
+        timeZone: timeZone,
+        year: year,
+        month: month,
+        day: day,
+        hour: hour,
+        minute: minute
+    ))!
+}
+
+private final class DiaryPreviewKeychainStore: KeychainStoring {
+    func string(for key: KeychainKey) -> String? { nil }
+    func set(_ value: String, for key: KeychainKey) {}
+    func removeValue(for key: KeychainKey) {}
+}
+
+private struct DiaryPreviewLLMService: LLMServicing, AppleIntelligenceAvailabilityChecking {
+    func checkAppleIntelligenceAvailability() throws {}
+
+    func extractTimeEntries(
+        apiKey: String,
+        model: String,
+        note: DailyNoteInput,
+        timeZone: TimeZone,
+        extractionContext: LLMExtractionContext
+    ) async throws -> GeminiExtractionResponse {
+        GeminiExtractionResponse(entries: [], assumptions: [], summary: nil)
+    }
+
+    func testConnection(apiKey: String, model: String) async throws -> String {
+        "ok"
+    }
+
+    func polishUserContext(apiKey: String, model: String, rawText: String) async throws -> String {
+        rawText
+    }
+}
+
+private struct DiaryPreviewTogglService: TogglServicing {
+    func fetchCurrentUser(apiToken: String) async throws -> TogglCurrentUserDTO {
+        TogglCurrentUserDTO(id: 1, fullname: "Preview User", email: "preview@example.com")
+    }
+
+    func fetchWorkspaces(apiToken: String) async throws -> [WorkspaceSummary] {
+        []
+    }
+
+    func fetchProjects(apiToken: String, workspaceID: Int) async throws -> [ProjectSummary] {
+        []
+    }
+
+    func createTimeEntries(
+        _ submissions: [StoredTimeEntryRecord.TogglSubmission],
+        apiToken: String
+    ) async throws -> [TogglCreatedTimeEntryDTO] {
+        []
+    }
+}
+
+private struct DiaryPreviewClockifyService: ClockifyServicing {
+    func fetchCurrentUser(apiKey: String) async throws -> ClockifyCurrentUserDTO {
+        ClockifyCurrentUserDTO(
+            id: "preview-user",
+            name: "Preview User",
+            email: "preview@example.com",
+            activeWorkspace: "preview-workspace",
+            defaultWorkspace: "preview-workspace"
+        )
+    }
+
+    func fetchWorkspaces(apiKey: String) async throws -> [ClockifyWorkspaceSummary] {
+        []
+    }
+
+    func fetchProjects(apiKey: String, workspaceID: String) async throws -> [ClockifyProjectSummary] {
+        []
+    }
+
+    func createTimeEntries(
+        _ submissions: [StoredTimeEntryRecord.ClockifySubmission],
+        apiKey: String
+    ) async throws -> [ClockifyCreatedTimeEntryDTO] {
+        []
+    }
+}
+
+private struct DiaryPreviewHarvestService: HarvestServicing {
+    func fetchAccounts(accessToken: String) async throws -> [HarvestAccountSummary] {
+        []
+    }
+
+    func fetchCurrentUser(accessToken: String, accountID: Int) async throws -> HarvestCurrentUserDTO {
+        HarvestCurrentUserDTO(
+            id: 1,
+            firstName: "Preview",
+            lastName: "User",
+            email: "preview@example.com"
+        )
+    }
+
+    func fetchProjectAssignments(accessToken: String, accountID: Int) async throws -> [HarvestProjectSummary] {
+        []
+    }
+
+    func createTimeEntries(
+        _ submissions: [StoredTimeEntryRecord.HarvestSubmission],
+        accessToken: String
+    ) async throws -> [HarvestCreatedTimeEntryDTO] {
+        []
+    }
+}
+
+#Preview("Diary - Desktop", traits: .fixedLayout(width: 1100, height: 780)) {
+    NavigationStack {
+        DiaryView()
+    }
+    .environmentObject(makeDiaryPreviewModel())
+}
+
+#if os(iOS)
+#Preview("Diary - iPhone", traits: .fixedLayout(width: 393, height: 852)) {
+    NavigationStack {
+        DiaryView()
+    }
+    .environmentObject(makeDiaryPreviewModel())
+}
+#endif
+#endif
