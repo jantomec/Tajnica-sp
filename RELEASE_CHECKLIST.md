@@ -27,7 +27,7 @@ Treat this file as locked once release review starts. Any exception should be do
 
 ## Product Identity And Packaging
 
-- [ ] `Automated`: all user-facing copy uses `Tajnica s.p.` or neutral wording instead of `Planner`.
+- [x] `Automated`: all user-facing copy uses `Tajnica s.p.` or neutral wording instead of `Planner`. Enforced by `ReleaseReadinessTests.appSourcesDoNotLeakLegacyPlannerIntoStringLiterals` (Swift-source string literals) plus `disabledLLMCopyUsesReleaseName` and `exportFilenamePrefixMatchesReleaseBrand` (specific brand-critical surfaces); the release `CFBundleDisplayName` is pinned to `Tajnica s.p.` in the project build settings.
 - [ ] `Manual`: app icon, app name, accent color, and screenshots match the release brand.
 - [x] `Decision`: keep the Release bundle identifier `JanTomec.Planner` to preserve storage continuity and
   existing integrations; Debug intentionally uses `com.jantomec.planner` and the divergence is expected.
