@@ -5,7 +5,7 @@ enum AppConfiguration {
     static let appName = "Planner"
     static let displayName = "Tajnica s.p."
     static let exportFilenamePrefix = "tajnica-sp-time-tracker"
-    static let cloudKitContainerIdentifier = "iCloud.com.jantomec.planner"
+    static let cloudKitContainerIdentifier = "iCloud.storage.JanTomec.Planner"
     static let createdWith = displayName
     static let defaultAppleFoundationModel = "on-device"
     static let defaultGeminiModel = "gemini-2.5-flash"

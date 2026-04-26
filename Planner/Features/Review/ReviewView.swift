@@ -107,9 +107,7 @@ struct ReviewView: View {
             enabledTrackers: appModel.enabledTimeTrackers,
             onSave: { appModel.saveEditedEntry($0) }
         ))
-        .onAppear {
-            openPendingReviewEntryIfNeeded()
-        }
+        .onAppear { openPendingReviewEntryIfNeeded() }
         .onChange(of: appModel.pendingReviewEntryID) { _, _ in
             openPendingReviewEntryIfNeeded()
         }
@@ -307,6 +305,7 @@ struct ReviewView: View {
         .disabled(!appModel.canSubmit)
         .help(appModel.submissionDestinationSummary)
         .accessibilityLabel("Submit entries")
+        .foregroundStyle(.foreground)
     }
 
     @ViewBuilder
@@ -449,8 +448,11 @@ struct ReviewView: View {
     }
 
     private func openPendingReviewEntryIfNeeded() {
-        guard let entry = appModel.consumePendingReviewEntryIfAvailable() else { return }
-        editingEntry = entry
+        // Callers fire from view-update phases; consume mutates @Published state.
+        DispatchQueue.main.async {
+            guard let entry = appModel.consumePendingReviewEntryIfAvailable() else { return }
+            editingEntry = entry
+        }
     }
 }
 

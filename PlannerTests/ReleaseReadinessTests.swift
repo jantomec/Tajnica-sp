@@ -125,7 +125,8 @@ struct ReleaseReadinessTests {
             "?? \"Planner\"",
             "static let appName = \"Planner\"",
             "\"PlannerSync\"",
-            "\"PlannerSyncInMemory\""
+            "\"PlannerSyncInMemory\"",
+            "\"iCloud.storage.JanTomec.Planner\""
         ]
 
         var violations: [String] = []

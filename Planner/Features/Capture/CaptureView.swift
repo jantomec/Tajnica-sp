@@ -53,6 +53,7 @@ struct CaptureView: View {
         .buttonBorderShape(.capsule)
         .controlSize(.large)
         .disabled(!appModel.canProcess)
+        .foregroundStyle(.foreground)
     }
 
     @ViewBuilder
@@ -145,6 +146,7 @@ struct CaptureView: View {
                                 .font(.body)
                                 .foregroundStyle(.tertiary)
                                 .padding(.leading, 5)
+                                .padding(.top, 8)
                                 .allowsHitTesting(false)
                         }
                     }
@@ -176,11 +178,13 @@ struct CaptureView: View {
         }
         .navigationTitle("Capture")
         .onAppear {
-            appModel.refreshNoteDateForPresentation()
+            DispatchQueue.main.async {
+                appModel.refreshNoteDateForPresentation()
+            }
         }
         .confirmationDialog(
             "Replace the current review entries?",
-            isPresented: $appModel.shouldConfirmRegeneration,
+            isPresented: $appModel.shouldConfirmRegeneration.deferredWrite(),
             titleVisibility: .visible
         ) {
             Button("Regenerate", role: .destructive) {

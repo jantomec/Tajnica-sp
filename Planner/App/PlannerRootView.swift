@@ -5,7 +5,7 @@ struct PlannerRootView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        TabView(selection: $appModel.selectedTab) {
+        TabView(selection: $appModel.selectedTab.deferredWrite()) {
             NavigationStack {
                 CaptureView()
             }
@@ -51,5 +51,21 @@ struct PlannerRootView: View {
         .onOpenURL { url in
             appModel.handleIncomingURL(url)
         }
+    }
+}
+
+extension Binding where Value: Equatable {
+    /// Skips no-op writes and defers real writes to the next runloop turn.
+    /// Use when a SwiftUI control writes back to a `@Published` property during a
+    /// view-update phase (e.g. `TabView` selection, `confirmationDialog` `isPresented`),
+    /// which otherwise trips "Publishing changes from within view updates."
+    func deferredWrite() -> Binding<Value> {
+        Binding(
+            get: { wrappedValue },
+            set: { newValue in
+                guard wrappedValue != newValue else { return }
+                DispatchQueue.main.async { self.wrappedValue = newValue }
+            }
+        )
     }
 }

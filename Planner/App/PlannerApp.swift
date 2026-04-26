@@ -35,6 +35,10 @@ struct PlannerApp: App {
                 .environmentObject(appModel)
                 .modelContainer(persistenceController.modelContainer)
         }
+        #if os(macOS)
+        .defaultSize(width: 720, height: 460)
+        .windowResizability(.contentMinSize)
+        #endif
 
         #if os(macOS)
         Settings {
