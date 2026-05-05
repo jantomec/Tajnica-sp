@@ -2,6 +2,7 @@ import SwiftUI
 
 struct CaptureView: View {
     @EnvironmentObject private var appModel: PlannerAppModel
+    @FocusState private var isNoteEditorFocused: Bool
 
     private var aiSettingsActionView: AnyView {
         #if os(macOS)
@@ -110,6 +111,15 @@ struct CaptureView: View {
                     Text("Paste or write your day in any language. \(AppConfiguration.displayName) turns your note into candidate time entries using your selected AI engine.")
                         .foregroundStyle(.secondary)
                         .font(.subheadline)
+
+                    Label {
+                        Text("Example: client call in the morning, lunch, bug fixing in the afternoon, admin at the end of the day.")
+                    } icon: {
+                        Image(systemName: "lightbulb")
+                    }
+                    .foregroundStyle(.tertiary)
+                    .font(.footnote)
+                    .padding(.top, 2)
                 }
 
                 HStack(spacing: 8) {
@@ -122,37 +132,26 @@ struct CaptureView: View {
                 .padding(.vertical, 8)
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
 
-                ZStack(alignment: .topLeading) {
+                TextEditor(
+                    text: Binding(
+                        get: { appModel.draft.note.rawText },
+                        set: { appModel.updateRawText($0) }
+                    )
+                )
+                .font(.body)
+                .foregroundColor(.primary)
+                .scrollContentBackground(.hidden)
+                .focused($isNoteEditorFocused)
+                .frame(minHeight: 200)
+                .padding(12)
+                .background(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
                         .fill(Color.secondary.opacity(0.06))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 1)
-                        )
-
-                    ZStack(alignment: .topLeading) {
-                        TextEditor(
-                            text: Binding(
-                                get: { appModel.draft.note.rawText },
-                                set: { appModel.updateRawText($0) }
-                            )
-                        )
-                        .font(.body)
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 200)
-
-                        if appModel.draft.note.rawText.isEmpty {
-                            TextEditor(
-                                text: .constant("Write your note here. Example: client call in the morning, lunch, bug fixing in the afternoon, admin at the end of the day.")
-                            )
-                            .font(.body)
-                            .scrollContentBackground(.hidden)
-                            .foregroundStyle(.tertiary)
-                            .allowsHitTesting(false)
-                        }
-                    }
-                    .padding(12)
-                }
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 1)
+                )
 
                 if !appModel.isAIConfigured {
                     StatusBanner(
@@ -177,6 +176,17 @@ struct CaptureView: View {
             .frame(maxWidth: 780, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
         }
+        #if os(iOS)
+        .scrollDismissesKeyboard(.interactively)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    isNoteEditorFocused = false
+                }
+            }
+        }
+        #endif
         .navigationTitle("Capture")
         .onAppear {
             DispatchQueue.main.async {
