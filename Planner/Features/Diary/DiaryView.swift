@@ -77,6 +77,21 @@ private struct DiaryPromptTimelineSheet: View {
         !submittedEntries.isEmpty
     }
 
+    private var isUnpromptedPlaceholder: Bool {
+        record.rawText.isBlank
+    }
+
+    private var bannerText: String {
+        if isShowingSubmittedEntries {
+            return isUnpromptedPlaceholder
+                ? "Showing the latest saved entries added without a prompt."
+                : "Showing the latest saved submission generated from this prompt."
+        }
+        return isUnpromptedPlaceholder
+            ? "No submitted entries saved yet. Showing current draft entries when available."
+            : "No submitted entries are saved for this prompt yet. Showing the current draft entries when available."
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -84,15 +99,14 @@ private struct DiaryPromptTimelineSheet: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Prompt")
                             .font(.headline)
-                        Text(record.rawText)
+                        Text(isUnpromptedPlaceholder ? "Added events without a prompt" : record.rawText)
                             .font(.body)
+                            .italic(isUnpromptedPlaceholder)
                             .foregroundStyle(.secondary)
                     }
 
                     StatusBanner(
-                        text: isShowingSubmittedEntries
-                            ? "Showing the latest saved submission generated from this prompt."
-                            : "No submitted entries are saved for this prompt yet. Showing the current draft entries when available.",
+                        text: bannerText,
                         style: isShowingSubmittedEntries ? .info : .warning
                     )
 
@@ -152,7 +166,9 @@ private struct DiaryPromptTimelineSheet: View {
                 }
             }
         }
+        #if os(macOS)
         .frame(minWidth: 560, minHeight: 520)
+        #endif
     }
 
     @ViewBuilder

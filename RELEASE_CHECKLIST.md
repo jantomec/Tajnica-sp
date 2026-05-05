@@ -41,7 +41,7 @@ Treat this file as locked once release review starts. Any exception should be do
 
 ## Build, Signing, And Distribution
 
-- [x] `Manual`: release version and build number are set correctly. `MARKETING_VERSION = 1.1.0` and `CURRENT_PROJECT_VERSION = 1` on the `Planner` app target for both Debug and Release configurations.
+- [x] `Manual`: release version and build number are set correctly. `MARKETING_VERSION = 1.1` and `CURRENT_PROJECT_VERSION = 5` on the `Planner` app target for both Debug and Release configurations.
 - [x] `Automated`: release build compiles cleanly for macOS and iOS/iPadOS. Covered by `scripts/release-build.sh` and the `.github/workflows/release-build.yml` CI job, which run `xcodebuild -configuration Release clean build` against `generic/platform=macOS` and `generic/platform=iOS` with code signing disabled.
 - [x] `Manual`: platform-specific plist settings do not produce avoidable shipping warnings.
 - [x] `Manual`: code signing works for all shipping targets.

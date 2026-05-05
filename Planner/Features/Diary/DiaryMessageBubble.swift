@@ -20,12 +20,20 @@ struct DiaryMessageBubble: View {
         max(bubbleWidth - (horizontalPadding * 2), 0)
     }
 
+    private var isUnpromptedPlaceholder: Bool {
+        record.rawText.isBlank
+    }
+
+    private var displayText: String {
+        isUnpromptedPlaceholder ? "Added events without a prompt" : record.rawText
+    }
+
     private var renderedLineCount: Int {
-        Self.renderedLineCount(for: record.rawText, width: maxContentWidth)
+        Self.renderedLineCount(for: displayText, width: maxContentWidth)
     }
 
     private var isCollapsible: Bool {
-        renderedLineCount > collapsedLineLimit
+        !isUnpromptedPlaceholder && renderedLineCount > collapsedLineLimit
     }
 
     var body: some View {
@@ -33,8 +41,9 @@ struct DiaryMessageBubble: View {
             Spacer(minLength: 0)
 
             VStack(alignment: .trailing, spacing: 6) {
-                Text(record.rawText)
+                Text(displayText)
                     .font(.body)
+                    .italic(isUnpromptedPlaceholder)
                     .multilineTextAlignment(.leading)
                     .lineLimit(isExpanded ? nil : collapsedLineLimit)
                     .frame(maxWidth: .infinity, alignment: .leading)

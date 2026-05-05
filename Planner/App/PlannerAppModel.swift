@@ -1332,6 +1332,13 @@ final class PlannerAppModel: ObservableObject {
             return
         }
 
+        do {
+            try ensureDiaryPromptForUnpromptedEntries()
+        } catch {
+            reviewErrorMessage = error.localizedDescription
+            return
+        }
+
         let submissionTime = Date.now
 
         do {
@@ -1782,6 +1789,26 @@ final class PlannerAppModel: ObservableObject {
         } catch {
             captureErrorMessage = error.localizedDescription
         }
+    }
+
+    private func ensureDiaryPromptForUnpromptedEntries() throws {
+        guard draft.sourceDiaryPromptID == nil, !draft.candidateEntries.isEmpty else { return }
+
+        let day = currentDay
+
+        if let existing = diaryPromptHistory.last(where: { $0.day == day && $0.rawText.isBlank }) {
+            draft.sourceDiaryPromptID = existing.id
+            return
+        }
+
+        let record = DiaryPromptRecord(day: day, rawText: "")
+        diaryPromptHistory = try syncRepository.appendDiaryPrompt(record)
+        draft.sourceDiaryPromptID = resolveArchivedDiaryPromptID(
+            preferredID: record.id,
+            day: record.day,
+            rawText: record.rawText,
+            history: diaryPromptHistory
+        )
     }
 
     func latestStoredEntries(for diaryPromptID: UUID) -> [StoredTimeEntryRecord] {

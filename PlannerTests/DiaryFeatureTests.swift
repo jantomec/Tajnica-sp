@@ -387,6 +387,42 @@ struct DiaryFeatureTests {
 
     @MainActor
     @Test
+    func submitEntriesCreatesPlaceholderPromptForUnpromptedManualEntries() async throws {
+        let context = TestContext()
+        defer { context.cleanup() }
+
+        let model = context.makeAppModel()
+
+        #expect(model.diaryPromptHistory.isEmpty)
+
+        model.addEntry()
+        let addedEntry = try #require(model.draft.candidateEntries.first)
+        var edited = addedEntry
+        edited.description = "Manual entry without prompt"
+        model.saveEditedEntry(edited)
+
+        await model.submitEntries()
+
+        let placeholder = try #require(model.diaryPromptHistory.last)
+        #expect(placeholder.rawText.isEmpty)
+
+        let linkedEntries = model.latestStoredEntries(for: placeholder.id)
+        #expect(linkedEntries.count == 1)
+        #expect(linkedEntries.first?.diaryPromptRecordID == placeholder.id)
+
+        model.addEntry()
+        let secondEntry = try #require(model.draft.candidateEntries.first)
+        var secondEdited = secondEntry
+        secondEdited.description = "Another manual entry"
+        model.saveEditedEntry(secondEdited)
+
+        await model.submitEntries()
+
+        #expect(model.diaryPromptHistory.count == 1)
+    }
+
+    @MainActor
+    @Test
     func exportCanEmitTogglPayloadsFromStoredEntries() async throws {
         let context = TestContext()
         defer { context.cleanup() }

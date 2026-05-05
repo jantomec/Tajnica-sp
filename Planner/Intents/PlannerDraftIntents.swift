@@ -143,7 +143,7 @@ struct OpenPlannerCaptureIntent: AppIntent {
     }
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
-        let message = "Opening Capture in \(AppConfiguration.displayName)"
+        let message = "Opening Capture in \(await AppConfiguration.displayName)"
         return .result(
             opensIntent: OpenURLIntent(PlannerDeepLink.capture.url),
             dialog: IntentDialog(stringLiteral: message)
@@ -167,9 +167,9 @@ struct OpenPlannerReviewIntent: AppIntent {
         let message: String
         if let entry {
             let title = entry.descriptionText.isBlank ? "Untitled Entry" : entry.descriptionText
-            message = "Opening Review for \"\(title)\" in \(AppConfiguration.displayName)"
+            message = "Opening Review for \"\(title)\" in \(await AppConfiguration.displayName)"
         } else {
-            message = "Opening Review in \(AppConfiguration.displayName)"
+            message = "Opening Review in \(await AppConfiguration.displayName)"
         }
 
         return .result(

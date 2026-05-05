@@ -142,12 +142,13 @@ struct CaptureView: View {
                         .frame(minHeight: 200)
 
                         if appModel.draft.note.rawText.isEmpty {
-                            Text("Write your note here. Example: client call in the morning, lunch, bug fixing in the afternoon, admin at the end of the day.")
-                                .font(.body)
-                                .foregroundStyle(.tertiary)
-                                .padding(.leading, 5)
-                                .padding(.top, 8)
-                                .allowsHitTesting(false)
+                            TextEditor(
+                                text: .constant("Write your note here. Example: client call in the morning, lunch, bug fixing in the afternoon, admin at the end of the day.")
+                            )
+                            .font(.body)
+                            .scrollContentBackground(.hidden)
+                            .foregroundStyle(.tertiary)
+                            .allowsHitTesting(false)
                         }
                     }
                     .padding(12)
