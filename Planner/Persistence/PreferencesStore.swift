@@ -16,6 +16,7 @@ final class PreferencesStore {
         static let selectedLLMModel = "selectedLLMModel"
         static let appleIntelligenceEnabled = "appleIntelligenceEnabled"
         static let userContext = "userContext"
+        static let lastKnownStorageSyncMode = "lastKnownStorageSyncMode"
     }
 
     private let userDefaults: UserDefaults
@@ -124,6 +125,11 @@ final class PreferencesStore {
     var userContext: String {
         get { userDefaults.string(forKey: Keys.userContext) ?? "" }
         set { userDefaults.set(newValue, forKey: Keys.userContext) }
+    }
+
+    var lastKnownStorageSyncMode: String? {
+        get { userDefaults.string(forKey: Keys.lastKnownStorageSyncMode) }
+        set { setOptional(newValue, forKey: Keys.lastKnownStorageSyncMode) }
     }
 
     func storeResolvedWorkspace(_ workspace: WorkspaceSummary?) {

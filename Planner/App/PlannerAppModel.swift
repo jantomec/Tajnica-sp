@@ -371,6 +371,8 @@ final class PlannerAppModel: ObservableObject {
         didStart = true
         synchronizeNoteDateWithToday()
 
+        migrateAppStorageToICloudIfNeeded()
+
         _ = await refreshTrackerReferenceData(showErrors: false)
     }
 
@@ -1341,7 +1343,9 @@ final class PlannerAppModel: ObservableObject {
 
         let submissionTime = Date.now
 
+        let submittedRecords: [StoredTimeEntryRecord]
         do {
+            let submittedIDs = Set(draft.candidateEntries.map(\.id))
             storedEntries = try syncRepository.upsertStoredEntries(
                 draft.candidateEntries.map { entry in
                     StoredTimeEntryRecord(
@@ -1351,6 +1355,7 @@ final class PlannerAppModel: ObservableObject {
                     )
                 }
             )
+            submittedRecords = storedEntries.filter { submittedIDs.contains($0.id) }
         } catch {
             reviewErrorMessage = error.localizedDescription
             return
@@ -1360,9 +1365,9 @@ final class PlannerAppModel: ObservableObject {
         var failures: [String] = []
 
         if hasStoredCredential(for: .toggl) {
-            let submissions = storedEntries.compactMap(\.toggl)
+            let submissions = submittedRecords.compactMap(\.toggl)
 
-            if submissions.count == draft.candidateEntries.count {
+            if submissions.count == submittedRecords.count {
                 do {
                     _ = try await togglService.createTimeEntries(
                         submissions,
@@ -1378,9 +1383,9 @@ final class PlannerAppModel: ObservableObject {
         }
 
         if hasStoredCredential(for: .clockify) {
-            let submissions = storedEntries.compactMap(\.clockify)
+            let submissions = submittedRecords.compactMap(\.clockify)
 
-            if submissions.count == draft.candidateEntries.count {
+            if submissions.count == submittedRecords.count {
                 do {
                     _ = try await clockifyService.createTimeEntries(
                         submissions,
@@ -1396,9 +1401,9 @@ final class PlannerAppModel: ObservableObject {
         }
 
         if hasStoredCredential(for: .harvest) {
-            let submissions = storedEntries.compactMap(\.harvest)
+            let submissions = submittedRecords.compactMap(\.harvest)
 
-            if submissions.count == draft.candidateEntries.count {
+            if submissions.count == submittedRecords.count {
                 do {
                     _ = try await harvestService.createTimeEntries(
                         submissions,
@@ -1691,6 +1696,21 @@ final class PlannerAppModel: ObservableObject {
     private func navigateToReview(entryID: CandidateTimeEntry.ID?) {
         pendingReviewEntryID = entryID
         selectedTab = .review
+    }
+
+    private func migrateAppStorageToICloudIfNeeded() {
+        let currentMode = storageSyncMode == .cloudKit ? "cloudKit" : "local"
+        let lastMode = preferencesStore.lastKnownStorageSyncMode
+
+        defer { preferencesStore.lastKnownStorageSyncMode = currentMode }
+
+        guard storageSyncMode == .cloudKit, lastMode != "cloudKit" else { return }
+
+        do {
+            try syncRepository.resyncAllRecords()
+        } catch {
+            captureErrorMessage = error.localizedDescription
+        }
     }
 
     private func loadPersistedContent() {

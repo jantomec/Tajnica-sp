@@ -15,4 +15,8 @@ protocol PlannerSyncRepository {
     func appendDiaryPrompt(_ record: DiaryPromptRecord) throws -> [DiaryPromptRecord]
     @discardableResult
     func upsertStoredEntries(_ entries: [StoredTimeEntryRecord]) throws -> [StoredTimeEntryRecord]
+    /// Re-saves every persisted record so SwiftData/CloudKit treats each one as
+    /// modified and uploads it again. Used for the one-time push that runs the
+    /// first time iCloud becomes available after a local-only run.
+    func resyncAllRecords() throws
 }

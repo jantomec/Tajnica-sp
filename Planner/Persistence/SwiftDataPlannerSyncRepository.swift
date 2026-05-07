@@ -152,6 +152,24 @@ final class SwiftDataPlannerSyncRepository: PlannerSyncRepository {
         return try canonicalDiaryPrompts(in: context).map(\.diaryPromptRecord)
     }
 
+    func resyncAllRecords() throws {
+        let context = modelContainer.mainContext
+
+        for entry in try context.fetch(FetchDescriptor<SyncedStoredTimeEntry>()) {
+            entry.payloadJSON = entry.payloadJSON
+        }
+
+        for prompt in try context.fetch(FetchDescriptor<SyncedDiaryPrompt>()) {
+            prompt.rawText = prompt.rawText
+        }
+
+        for draft in try context.fetch(FetchDescriptor<SyncedCurrentDraft>()) {
+            draft.payloadJSON = draft.payloadJSON
+        }
+
+        try save(context)
+    }
+
     @discardableResult
     func upsertStoredEntries(_ entries: [StoredTimeEntryRecord]) throws -> [StoredTimeEntryRecord] {
         let context = modelContainer.mainContext

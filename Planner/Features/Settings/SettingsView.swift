@@ -441,6 +441,8 @@ private struct AboutMeSettingsTabView: View {
                             text: $appModel.userContext
                         )
                         .font(.body)
+                        .foregroundStyle(Color.primary)
+                        .tint(Color.accentColor)
                         .frame(minHeight: 180)
                         .scrollContentBackground(.hidden)
 

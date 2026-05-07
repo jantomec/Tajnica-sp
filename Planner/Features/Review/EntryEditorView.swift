@@ -157,7 +157,9 @@ struct EntryEditorView: View {
                 Section("Details") {
                     TextField("Description", text: $descriptionText, axis: .vertical)
                         .lineLimit(2...4)
+                        .foregroundStyle(Color.primary)
                     TextField("Tags", text: $tagsText, prompt: Text("Comma-separated"))
+                        .foregroundStyle(Color.primary)
                 }
 
                 if enabledTrackers.contains(.toggl) {
